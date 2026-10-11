@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom'
 import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer, Sparkles } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
+import PageTransition from '../components/motion/PageTransition'
 
 export default function OrderConfirmationPage() {
   const location = useLocation()
@@ -59,7 +60,7 @@ export default function OrderConfirmationPage() {
   })
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12 text-white">
+    <PageTransition className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12 text-white">
       {/* Top Confirmation Header */}
       <div className="text-center space-y-4 max-w-xl mx-auto">
         <div className="inline-flex p-3 rounded-full glass-panel-gold border-[#D4AF37]/50 text-[#D4AF37]">
@@ -236,6 +237,6 @@ export default function OrderConfirmationPage() {
           <span>Print Order Dossier</span>
         </button>
       </div>
-    </div>
+    </PageTransition>
   )
 }

@@ -1,10 +1,12 @@
 import React from 'react'
 import { ArrowRight, Compass, Layers, Scissors, Sparkles } from 'lucide-react'
 import Button from '../components/ui/Button'
+import PageTransition from '../components/motion/PageTransition'
+import FadeInView from '../components/motion/FadeInView'
 
 export default function AboutPage() {
   return (
-    <div className="space-y-24 sm:space-y-36 py-6 sm:py-12 text-white">
+    <PageTransition className="space-y-24 sm:space-y-36 py-6 sm:py-12 text-white">
       {/* Editorial Hero with Headline "DRESS LIKE YOU MEAN IT." */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-white/10 pb-8 sm:pb-12">
@@ -390,6 +392,6 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-    </div>
+    </PageTransition>
   )
 }

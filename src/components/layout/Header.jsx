@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles, Ruler } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
@@ -19,7 +20,7 @@ export default function Header() {
   const navigate = useNavigate()
   const searchInputRef = useRef(null)
 
-  const { openCart, totalItems } = useCart()
+  const { openCart, totalItems, cartBounced } = useCart()
   const { totalWishlist } = useWishlist()
 
   const isHomePage = location.pathname === '/'
@@ -212,23 +213,35 @@ export default function Header() {
                 )}
               </button>
 
-              {/* Shopping Bag Button */}
-              <button
+              {/* Shopping Bag Button with Live Motion Bounce */}
+              <motion.button
                 type="button"
                 onClick={openCart}
+                animate={cartBounced ? { scale: [1, 1.25, 0.95, 1.1, 1], rotate: [0, -6, 6, -3, 0] } : { scale: 1, rotate: 0 }}
+                transition={{ duration: 0.55 }}
                 aria-label={`Open shopping bag with ${totalItems} items`}
-                className="relative p-2 text-gray-300 hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] cursor-pointer"
+                className={`relative p-2 text-gray-300 hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] cursor-pointer ${
+                  cartBounced ? 'text-[#D4AF37]' : ''
+                }`}
               >
                 <ShoppingBag size={18} />
-                <span className="hidden sm:inline text-xs font-mono tracking-wider font-semibold text-white">
+                <motion.span
+                  key={totalItems}
+                  initial={{ scale: 1.35, color: '#D4AF37' }}
+                  animate={{ scale: 1, color: '#FFFFFF' }}
+                  className="hidden sm:inline text-xs font-mono tracking-wider font-semibold text-white"
+                >
                   ({totalItems})
-                </span>
+                </motion.span>
+                {cartBounced && (
+                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#D4AF37] animate-ping" />
+                )}
                 {totalItems > 0 && (
                   <span className="sm:hidden absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full gold-gradient-bg text-[#08090D] text-[9px] font-bold">
                     {totalItems}
                   </span>
                 )}
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>

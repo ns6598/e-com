@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Button from '../components/ui/Button'
+import PageTransition from '../components/motion/PageTransition'
 
 // FAQ Data covering Shipping, Returns, Sizing, Orders, and Maintenance
 const FAQ_ITEMS = [
@@ -154,7 +155,7 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="space-y-24 sm:space-y-32 py-6 sm:py-12 text-white">
+    <PageTransition className="space-y-24 sm:space-y-32 py-6 sm:py-12 text-white">
       {/* Page Header & Concierge Intro */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-white/10 pb-8 sm:pb-12">
@@ -588,6 +589,6 @@ export default function ContactPage() {
           </p>
         </div>
       </section>
-    </div>
+    </PageTransition>
   )
 }

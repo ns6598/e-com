@@ -1,15 +1,17 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, Plus, Check, AlertCircle, Eye, Sparkles } from 'lucide-react'
 import { formatCurrency, calculateDiscountPercentage } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import ProductQuickViewModal from './ProductQuickViewModal'
+import TiltCard from '../motion/TiltCard'
 
 /**
  * Neo-Luxury Liquid Glass Product Card Component
- * Frosted obsidian canvas, gold border glow on hover, multi-angle quick view modal,
- * wishlist toggle, and size-aware rapid add tray
+ * Frosted obsidian canvas, 3D tilt perspective, smooth image cross-fade,
+ * wishlist micro-feedback, and size-aware rapid add tray
  */
 export default function ProductCard({ product, showQuickAdd = true, onQuickView }) {
   const { addToCart } = useCart()
@@ -24,11 +26,10 @@ export default function ProductCard({ product, showQuickAdd = true, onQuickView 
 
   const inWishlist = isInWishlist(product.id)
   const hasSecondaryImage = product.images && product.images.length > 1
-  const displayImage = imgError
+  const primaryImage = imgError
     ? 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
-    : isHovered && hasSecondaryImage
-    ? product.images[1]
     : product.images[0]
+  const secondaryImage = hasSecondaryImage ? product.images[1] : primaryImage
 
   // Check whether size selection is required
   const isOneSize =
@@ -91,67 +92,91 @@ export default function ProductCard({ product, showQuickAdd = true, onQuickView 
 
   return (
     <>
-      <article
-        className="group relative flex flex-col p-2.5 sm:p-3 glass-card rounded-xs bg-[#0B0D14]/70 border border-white/10 hover:border-[#D4AF37]/40 transition-all duration-300"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false)
-          setSizePromptOpen(false)
-        }}
-      >
-        {/* Visual Canvas Container with 3:4 aspect ratio */}
-        <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#121520] border border-white/5">
-          {/* Badges: Accurate Sale % or Tag */}
-          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-            {discountPercent > 0 && (
-              <span className="inline-block bg-[#7E1828] text-white text-[9px] uppercase tracking-[0.2em] font-semibold px-2 py-0.5 shadow-md">
-                -{discountPercent}% OFF
-              </span>
-            )}
-            {product.tag && discountPercent === 0 && (
-              <span className="inline-block bg-[#D4AF37] text-[#08090D] text-[9px] uppercase tracking-[0.2em] font-bold px-2 py-0.5 shadow-md">
-                {product.tag}
-              </span>
-            )}
-          </div>
+      <TiltCard maxTilt={5} scaleOnHover={1.015} className="h-full">
+        <article
+          className="group relative flex flex-col h-full p-2.5 sm:p-3 glass-card rounded-xs bg-[#0B0D14]/75 border border-white/10 hover:border-[#D4AF37]/50 transition-colors duration-300 shadow-lg"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false)
+            setSizePromptOpen(false)
+          }}
+        >
+          {/* Visual Canvas Container with 3:4 aspect ratio */}
+          <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#121520] border border-white/5">
+            {/* Badges: Accurate Sale % or Tag */}
+            <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
+              {discountPercent > 0 && (
+                <span className="inline-block bg-[#7E1828] text-white text-[9px] uppercase tracking-[0.2em] font-semibold px-2 py-0.5 shadow-md">
+                  -{discountPercent}% OFF
+                </span>
+              )}
+              {product.tag && discountPercent === 0 && (
+                <span className="inline-block bg-[#D4AF37] text-[#08090D] text-[9px] uppercase tracking-[0.2em] font-bold px-2 py-0.5 shadow-md">
+                  {product.tag}
+                </span>
+              )}
+            </div>
 
-          {/* Quick Action Buttons (Wishlist & Quick View) */}
-          <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={handleWishlistClick}
-              aria-label={inWishlist ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-              className="flex h-8 w-8 items-center justify-center bg-[#090A0E]/80 backdrop-blur-md text-gray-300 transition-all duration-200 hover:text-[#D4AF37] hover:bg-[#121522] border border-white/10 cursor-pointer"
+            {/* Quick Action Buttons (Wishlist & Quick View) */}
+            <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
+              <motion.button
+                whileTap={{ scale: 0.8 }}
+                whileHover={{ scale: 1.12 }}
+                type="button"
+                onClick={handleWishlistClick}
+                aria-label={inWishlist ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+                className="flex h-8 w-8 items-center justify-center bg-[#090A0E]/85 backdrop-blur-md text-gray-300 transition-colors duration-200 hover:text-[#D4AF37] hover:bg-[#121522] border border-white/10 cursor-pointer shadow-md"
+              >
+                <Heart
+                  size={14}
+                  className={`transition-colors duration-200 ${
+                    inWishlist ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-current'
+                  }`}
+                />
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.85 }}
+                whileHover={{ scale: 1.12 }}
+                type="button"
+                onClick={handleOpenQuickView}
+                title="Quick inspect garment"
+                aria-label={`Quick view ${product.name}`}
+                className="opacity-0 group-hover:opacity-100 flex h-8 w-8 items-center justify-center bg-[#090A0E]/85 backdrop-blur-md text-gray-300 transition-all duration-200 hover:text-[#D4AF37] hover:bg-[#121522] border border-white/10 cursor-pointer shadow-md"
+              >
+                <Eye size={14} />
+              </motion.button>
+            </div>
+
+            {/* Product Image Link with smooth crossfade and custom cursor */}
+            <Link
+              to={`/product/${product.id}`}
+              data-cursor="view"
+              className="block h-full w-full relative overflow-hidden"
             >
-              <Heart
-                size={14}
-                className={`transition-colors duration-200 ${
-                  inWishlist ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-current'
-                }`}
+              {/* Primary Image */}
+              <img
+                src={primaryImage}
+                alt={product.name}
+                loading="lazy"
+                onError={() => setImgError(true)}
+                className={`h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-106 ${
+                  hasSecondaryImage && isHovered ? 'opacity-0' : 'opacity-100'
+                } transition-opacity duration-500`}
               />
-            </button>
 
-            <button
-              type="button"
-              onClick={handleOpenQuickView}
-              title="Quick inspect garment"
-              aria-label={`Quick view ${product.name}`}
-              className="opacity-0 group-hover:opacity-100 flex h-8 w-8 items-center justify-center bg-[#090A0E]/80 backdrop-blur-md text-gray-300 transition-all duration-200 hover:text-[#D4AF37] hover:bg-[#121522] border border-white/10 cursor-pointer"
-            >
-              <Eye size={14} />
-            </button>
-          </div>
-
-          {/* Product Image Link with secondary image on hover */}
-          <Link to={`/product/${product.id}`} className="block h-full w-full">
-            <img
-              src={displayImage}
-              alt={product.name}
-              loading="lazy"
-              onError={() => setImgError(true)}
-              className="h-full w-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-            />
-          </Link>
+              {/* Secondary Image Crossfade on Hover */}
+              {hasSecondaryImage && (
+                <img
+                  src={secondaryImage}
+                  alt={`${product.name} detail preview`}
+                  loading="lazy"
+                  className={`absolute inset-0 h-full w-full object-cover object-top transition-all duration-700 ease-out group-hover:scale-106 ${
+                    isHovered ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              )}
+            </Link>
 
           {/* Liquid Glass Quick Add Overlay Tray */}
           {showQuickAdd && product.inStock && (
@@ -278,6 +303,7 @@ export default function ProductCard({ product, showQuickAdd = true, onQuickView 
           </div>
         </div>
       </article>
+      </TiltCard>
 
       {/* Internal Modal if no parent handler was passed */}
       {!onQuickView && (

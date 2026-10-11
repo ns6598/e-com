@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Heart,
   Plus,
@@ -21,6 +22,8 @@ import { useWishlist } from '../context/WishlistContext'
 import Button from '../components/ui/Button'
 import ProductCard from '../components/product/ProductCard'
 import SizeChartModal from '../components/common/SizeChartModal'
+import PageTransition from '../components/motion/PageTransition'
+import TiltCard from '../components/motion/TiltCard'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
@@ -124,7 +127,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-16 text-white">
+    <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-16 text-white">
       {/* Editorial Breadcrumb Navigation */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 font-mono">
         <Link to="/" className="hover:text-[#D4AF37] transition-colors">
@@ -146,38 +149,44 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
         {/* Left Column: Product Gallery */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Main Visual Frame */}
-          <div className="relative aspect-[3/4] bg-[#121522] border border-white/10 overflow-hidden group shadow-2xl">
-            <img
-              src={product.images[activeImageIndex] || product.images[0]}
-              alt={`${product.name} angle ${activeImageIndex + 1}`}
-              onError={(e) => {
-                e.target.src = 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
-              }}
-              className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-104"
-            />
+          {/* Main Visual Frame with 3D Tilt & Custom Cursor */}
+          <TiltCard
+            maxTilt={5}
+            glare={true}
+            className="relative aspect-[3/4] bg-[#121522] border border-white/10 overflow-hidden group shadow-2xl"
+          >
+            <div data-cursor="view" className="w-full h-full relative">
+              <img
+                src={product.images[activeImageIndex] || product.images[0]}
+                alt={`${product.name} angle ${activeImageIndex + 1}`}
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
+                }}
+                className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-104"
+              />
 
-            {/* Badges */}
-            <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 items-start">
-              {discountPercent > 0 && (
-                <span className="bg-[#7E1828] text-white text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-semibold shadow-md">
-                  -{discountPercent}% OFF
-                </span>
-              )}
-              {product.tag && discountPercent === 0 && (
-                <span className="bg-[#D4AF37] text-[#08090D] text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-bold shadow-md">
-                  {product.tag}
-                </span>
+              {/* Badges */}
+              <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 items-start">
+                {discountPercent > 0 && (
+                  <span className="bg-[#7E1828] text-white text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-semibold shadow-md">
+                    -{discountPercent}% OFF
+                  </span>
+                )}
+                {product.tag && discountPercent === 0 && (
+                  <span className="bg-[#D4AF37] text-[#08090D] text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-bold shadow-md">
+                    {product.tag}
+                  </span>
+                )}
+              </div>
+
+              {/* Low Stock Indicator */}
+              {product.stock && product.stock <= 5 && (
+                <div className="absolute bottom-4 right-4 z-10 glass-panel border-white/10 text-white px-3 py-1 text-[9px] uppercase tracking-widest font-mono">
+                  Only {product.stock} pieces in atelier batch
+                </div>
               )}
             </div>
-
-            {/* Low Stock Indicator */}
-            {product.stock && product.stock <= 5 && (
-              <div className="absolute bottom-4 right-4 z-10 glass-panel border-white/10 text-white px-3 py-1 text-[9px] uppercase tracking-widest font-mono">
-                Only {product.stock} pieces in atelier batch
-              </div>
-            )}
-          </div>
+          </TiltCard>
 
           {/* Thumbnail Navigation Row */}
           {product.images && product.images.length > 1 && (
@@ -368,6 +377,7 @@ export default function ProductDetailPage() {
                   onClick={handleAddToCart}
                   disabled={!product.inStock}
                   fullWidth
+                  magnetic={true}
                   className="h-13"
                 >
                   {addedSuccess ? (
@@ -383,8 +393,9 @@ export default function ProductDetailPage() {
                 </Button>
               </div>
 
-              {/* Wishlist Button */}
-              <button
+              {/* Wishlist Button with Motion */}
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={() => toggleWishlist(product)}
                 aria-label={inWishlist ? 'Remove from wishlist' : 'Save to wishlist'}
@@ -397,7 +408,7 @@ export default function ProductDetailPage() {
                     inWishlist ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-gray-300'
                   }`}
                 />
-              </button>
+              </motion.button>
             </div>
 
             {product.stock && product.stock <= 5 && (
@@ -425,7 +436,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Accordion Sections */}
+          {/* Accordion Sections with Smooth Motion Reveal */}
           <div className="divide-y divide-white/10 text-xs">
             {/* 1. Design Commentary */}
             <div className="py-4">
@@ -440,21 +451,29 @@ export default function ProductDetailPage() {
                   className={`transition-transform duration-200 ${openAccordions.commentary ? 'rotate-180' : ''}`}
                 />
               </button>
-              {openAccordions.commentary && (
-                <div className="pt-3 space-y-3 font-serif text-sm leading-relaxed text-gray-300 font-light">
-                  <p>{product.description}</p>
-                  {product.details && (
-                    <ul className="space-y-1.5 pt-2 text-xs font-sans text-gray-400">
-                      {product.details.map((detail, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] mt-1.5 shrink-0" />
-                          <span>{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {openAccordions.commentary && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="pt-3 space-y-3 font-serif text-sm leading-relaxed text-gray-300 font-light"
+                  >
+                    <p>{product.description}</p>
+                    {product.details && (
+                      <ul className="space-y-1.5 pt-2 text-xs font-sans text-gray-400">
+                        {product.details.map((detail, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] mt-1.5 shrink-0" />
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* 2. Materials & Composition */}
@@ -470,18 +489,26 @@ export default function ProductDetailPage() {
                   className={`transition-transform duration-200 ${openAccordions.materials ? 'rotate-180' : ''}`}
                 />
               </button>
-              {openAccordions.materials && (
-                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
-                  <p>
-                    <strong className="text-white block">Material Composition:</strong>
-                    {product.materials || '100% Noble natural fibers.'}
-                  </p>
-                  <p>
-                    <strong className="text-white block mt-2">Provenance:</strong>
-                    Woven in historic partner mills in Northern Italy and Tuscany. Finished without petroleum-based synthetic blends.
-                  </p>
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {openAccordions.materials && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
+                  >
+                    <p>
+                      <strong className="text-white block">Material Composition:</strong>
+                      {product.materials || '100% Noble natural fibers.'}
+                    </p>
+                    <p>
+                      <strong className="text-white block mt-2">Provenance:</strong>
+                      Woven in historic partner mills in Northern Italy and Tuscany. Finished without petroleum-based synthetic blends.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* 3. Care & Preservation */}
@@ -497,14 +524,22 @@ export default function ProductDetailPage() {
                   className={`transition-transform duration-200 ${openAccordions.care ? 'rotate-180' : ''}`}
                 />
               </button>
-              {openAccordions.care && (
-                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
-                  <p>{product.careInstructions || 'Specialist dry clean only. Steam vertical only.'}</p>
-                  <p className="text-[11px] text-gray-400 italic font-serif">
-                    All AUREVA garments include complimentary seam and hardware servicing by our atelier repair team.
-                  </p>
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {openAccordions.care && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
+                  >
+                    <p>{product.careInstructions || 'Specialist dry clean only. Steam vertical only.'}</p>
+                    <p className="text-[11px] text-gray-400 italic font-serif">
+                      All AUREVA garments include complimentary seam and hardware servicing by our atelier repair team.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* 4. Shipping & Returns */}
@@ -520,16 +555,24 @@ export default function ProductDetailPage() {
                   className={`transition-transform duration-200 ${openAccordions.shipping ? 'rotate-180' : ''}`}
                 />
               </button>
-              {openAccordions.shipping && (
-                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
-                  <p>
-                    Orders placed before 14:00 CET are dispatched same-day via express insured air courier. Delivery to major metropolitan centers takes 2–4 business days.
-                  </p>
-                  <p>
-                    Complimentary 30-day returns in original archival packaging with all serialized seals intact.
-                  </p>
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {openAccordions.shipping && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
+                  >
+                    <p>
+                      Orders placed before 14:00 CET are dispatched same-day via express insured air courier. Delivery to major metropolitan centers takes 2–4 business days.
+                    </p>
+                    <p>
+                      Complimentary 30-day returns in original archival packaging with all serialized seals intact.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -567,6 +610,6 @@ export default function ProductDetailPage() {
         onClose={() => setSizeGuideOpen(false)}
         initialDepartment={product?.department || product?.category || 'Women'}
       />
-    </div>
+    </PageTransition>
   )
 }

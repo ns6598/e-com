@@ -1,9 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import MagneticButton from '../motion/MagneticButton'
 
 /**
  * Neo-Luxury Liquid Glass Button Component
- * Architectural cuts, gold gradient shimmer, frosted glass borders & tactile micro-feedback
+ * Architectural cuts, gold gradient shimmer, frosted glass borders, magnetic hover & tactile micro-feedback
  */
 export default function Button({
   children,
@@ -18,6 +20,7 @@ export default function Button({
   className = '',
   icon: Icon,
   iconPosition = 'right',
+  magnetic = false,
   ...props
 }) {
   const baseStyles = 'inline-flex items-center justify-center font-sans tracking-[0.2em] uppercase transition-all duration-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090D]'
@@ -29,9 +32,9 @@ export default function Button({
   }
 
   const variantStyles = {
-    primary: 'gold-gradient-bg text-[#08090D] font-bold border border-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] hover:scale-[1.01] active:scale-[0.99]',
-    secondary: 'glass-panel text-white border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] active:scale-[0.99]',
-    oxblood: 'bg-[#7E1828] text-white border border-[#A3283E]/50 hover:bg-[#A3283E] hover:shadow-[0_0_20px_rgba(163,40,62,0.35)] active:scale-[0.99]',
+    primary: 'gold-gradient-bg text-[#08090D] font-bold border border-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] active:scale-[0.98]',
+    secondary: 'glass-panel text-white border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] active:scale-[0.98]',
+    oxblood: 'bg-[#7E1828] text-white border border-[#A3283E]/50 hover:bg-[#A3283E] hover:shadow-[0_0_20px_rgba(163,40,62,0.35)] active:scale-[0.98]',
     glass: 'glass-panel-gold text-white border-[#D4AF37]/40 hover:border-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.3)]',
     stone: 'bg-white/10 text-white border border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37]',
     text: 'bg-transparent text-[#D4AF37] border-b border-[#D4AF37]/40 hover:border-[#D4AF37] hover:text-white px-0 py-1 rounded-none tracking-[0.22em] gap-2',
@@ -49,8 +52,15 @@ export default function Button({
     </>
   )
 
+  const wrapWithMagnetic = (element) => {
+    if (magnetic || variant === 'primary') {
+      return <MagneticButton className={fullWidth ? 'w-full' : ''}>{element}</MagneticButton>
+    }
+    return element
+  }
+
   if (to) {
-    return (
+    return wrapWithMagnetic(
       <Link to={to} className={`group ${combinedClasses}`} {...props}>
         {content}
       </Link>
@@ -58,15 +68,16 @@ export default function Button({
   }
 
   if (href) {
-    return (
+    return wrapWithMagnetic(
       <a href={href} className={`group ${combinedClasses}`} {...props}>
         {content}
       </a>
     )
   }
 
-  return (
-    <button
+  return wrapWithMagnetic(
+    <motion.button
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
       type={type}
       onClick={onClick}
       disabled={disabled}
@@ -74,6 +85,6 @@ export default function Button({
       {...props}
     >
       {content}
-    </button>
+    </motion.button>
   )
 }

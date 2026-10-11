@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, Search, X, SlidersHorizontal, ChevronRight, RotateCcw, Check, ArrowUpDown, Sparkles } from 'lucide-react'
 import { PRODUCTS, DEPARTMENTS, CATEGORIES, SIZES, COLORS } from '../data/products'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import Button from '../components/ui/Button'
 import { formatCurrency } from '../utils/formatters'
+import PageTransition from '../components/motion/PageTransition'
+import FadeInView from '../components/motion/FadeInView'
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -189,7 +192,7 @@ export default function ShopPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 text-white">
+    <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 text-white">
       {/* Breadcrumbs */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 font-mono">
         <Link to="/" className="hover:text-[#D4AF37] transition-colors">
@@ -293,24 +296,31 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {/* Active Filter Chips */}
+      {/* Active Filter Chips with Smooth Layout Transitions */}
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1 pb-2">
           <span className="text-[10px] uppercase tracking-widest text-gray-400 font-mono mr-1">
             Active:
           </span>
-          {activeFilters.map((f, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={f.clear}
-              className="inline-flex items-center gap-1.5 glass-panel border-[#D4AF37]/40 text-[#D4AF37] px-2.5 py-1 text-[10px] uppercase tracking-wider hover:bg-[#D4AF37] hover:text-[#08090D] transition-colors cursor-pointer font-mono"
-              title="Click to remove filter"
-            >
-              <span>{f.label}</span>
-              <X size={11} />
-            </button>
-          ))}
+          <AnimatePresence mode="popLayout">
+            {activeFilters.map((f, i) => (
+              <motion.button
+                key={f.label}
+                layout
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.18 }}
+                type="button"
+                onClick={f.clear}
+                className="inline-flex items-center gap-1.5 glass-panel border-[#D4AF37]/40 text-[#D4AF37] px-2.5 py-1 text-[10px] uppercase tracking-wider hover:bg-[#D4AF37] hover:text-[#08090D] transition-colors cursor-pointer font-mono"
+                title="Click to remove filter"
+              >
+                <span>{f.label}</span>
+                <X size={11} />
+              </motion.button>
+            ))}
+          </AnimatePresence>
           <button
             type="button"
             onClick={clearAllFilters}
@@ -528,197 +538,215 @@ export default function ShopPage() {
           ) : (
             /* Product Grid */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard
+              {filteredProducts.map((product, idx) => (
+                <motion.div
                   key={product.id}
-                  product={product}
-                  onQuickView={(p) => setQuickViewProduct(p)}
-                />
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.3) }}
+                >
+                  <ProductCard
+                    product={product}
+                    onQuickView={(p) => setQuickViewProduct(p)}
+                  />
+                </motion.div>
               ))}
             </div>
           )}
         </main>
       </div>
 
-      {/* Slide-in Filter Drawer on Mobile */}
-      {mobileFiltersOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden lg:hidden" role="dialog" aria-modal="true" aria-label="Filters Drawer">
-          <div
-            className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md transition-opacity duration-300"
-            onClick={() => setMobileFiltersOpen(false)}
-            aria-hidden="true"
-          />
+      {/* Slide-in Filter Drawer on Mobile with Framer Motion */}
+      <AnimatePresence>
+        {mobileFiltersOpen && (
+          <div className="fixed inset-0 z-50 overflow-hidden lg:hidden" role="dialog" aria-modal="true" aria-label="Filters Drawer">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md"
+              onClick={() => setMobileFiltersOpen(false)}
+              aria-hidden="true"
+            />
 
-          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
-            <aside className="w-screen max-w-md bg-[#0C0E16] border-l border-white/10 flex flex-col shadow-2xl text-white h-full">
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#10131E]/60">
-                <div>
-                  <h2 className="font-serif text-2xl font-light text-white">Refine Repertoire</h2>
-                  <p className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-mono mt-0.5">
-                    {filteredProducts.length} Silhouettes Matching
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileFiltersOpen(false)}
-                  aria-label="Close filter drawer"
-                  className="p-2 text-gray-400 hover:text-white cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Scrollable Filter Options */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-8 text-xs">
-                {/* Department */}
-                <div className="space-y-3">
-                  <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                    Department
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DEPARTMENTS.map((dept) => (
-                      <button
-                        key={dept}
-                        type="button"
-                        onClick={() => setSelectedDepartment(dept)}
-                        className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
-                          selectedDepartment.toLowerCase() === dept.toLowerCase()
-                            ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                            : 'border-white/15 text-gray-300'
-                        }`}
-                      >
-                        {dept}
-                      </button>
-                    ))}
+            <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
+              <motion.aside
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                className="w-screen max-w-md bg-[#0C0E16] border-l border-white/10 flex flex-col shadow-2xl text-white h-full"
+              >
+                {/* Drawer Header */}
+                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#10131E]/60">
+                  <div>
+                    <h2 className="font-serif text-2xl font-light text-white">Refine Repertoire</h2>
+                    <p className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-mono mt-0.5">
+                      {filteredProducts.length} Silhouettes Matching
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileFiltersOpen(false)}
+                    aria-label="Close filter drawer"
+                    className="p-2 text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
 
-                {/* Garment Category */}
-                <div className="space-y-3">
-                  <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                    Category
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
-                          selectedCategory.toLowerCase() === cat.toLowerCase()
-                            ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                            : 'border-white/15 text-gray-300'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Max Price */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold">
-                      Max Price
+                {/* Scrollable Filter Options */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-8 text-xs">
+                  {/* Department */}
+                  <div className="space-y-3">
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
+                      Department
                     </h3>
-                    <span className="font-mono text-xs font-semibold text-white">
-                      {formatCurrency(priceRange)}
-                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {DEPARTMENTS.map((dept) => (
+                        <button
+                          key={dept}
+                          type="button"
+                          onClick={() => setSelectedDepartment(dept)}
+                          className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
+                            selectedDepartment.toLowerCase() === dept.toLowerCase()
+                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
+                              : 'border-white/15 text-gray-300'
+                          }`}
+                        >
+                          {dept}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min={minCatalogPrice}
-                    max={maxCatalogPrice}
-                    step={100}
-                    value={priceRange}
-                    onChange={(e) => setPriceRange(Number(e.target.value))}
-                    className="w-full accent-[#D4AF37] cursor-pointer"
-                  />
-                </div>
 
-                {/* Sizes */}
-                <div className="space-y-3">
-                  <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                    Sizes
-                  </h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSize('All')}
-                      className={`px-3 py-1.5 text-xs tracking-wider border cursor-pointer font-mono ${
-                        selectedSize === 'All'
-                          ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                          : 'border-white/15 text-gray-300'
-                      }`}
-                    >
-                      All
-                    </button>
-                    {SIZES.map((size) => (
+                  {/* Garment Category */}
+                  <div className="space-y-3">
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
+                      Category
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
+                            selectedCategory.toLowerCase() === cat.toLowerCase()
+                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
+                              : 'border-white/15 text-gray-300'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Max Price */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                      <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold">
+                        Max Price
+                      </h3>
+                      <span className="font-mono text-xs font-semibold text-white">
+                        {formatCurrency(priceRange)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={minCatalogPrice}
+                      max={maxCatalogPrice}
+                      step={100}
+                      value={priceRange}
+                      onChange={(e) => setPriceRange(Number(e.target.value))}
+                      className="w-full accent-[#D4AF37] cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Sizes */}
+                  <div className="space-y-3">
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
+                      Sizes
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
                       <button
-                        key={size}
                         type="button"
-                        onClick={() => setSelectedSize(size === selectedSize ? 'All' : size)}
+                        onClick={() => setSelectedSize('All')}
                         className={`px-3 py-1.5 text-xs tracking-wider border cursor-pointer font-mono ${
-                          selectedSize === size
+                          selectedSize === 'All'
                             ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
                             : 'border-white/15 text-gray-300'
                         }`}
                       >
-                        {size}
+                        All
                       </button>
-                    ))}
+                      {SIZES.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setSelectedSize(size === selectedSize ? 'All' : size)}
+                          className={`px-3 py-1.5 text-xs tracking-wider border cursor-pointer font-mono ${
+                            selectedSize === size
+                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
+                              : 'border-white/15 text-gray-300'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sale and New */}
+                  <div className="space-y-3 border-t border-white/10 pt-4">
+                    <label className="flex items-center justify-between cursor-pointer select-none">
+                      <span className="uppercase tracking-wider text-xs font-mono text-gray-300">Sale Pieces Only</span>
+                      <input
+                        type="checkbox"
+                        checked={saleOnly}
+                        onChange={(e) => setSaleOnly(e.target.checked)}
+                        className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between cursor-pointer select-none">
+                      <span className="uppercase tracking-wider text-xs font-mono text-gray-300">New Arrivals Only</span>
+                      <input
+                        type="checkbox"
+                        checked={newOnly}
+                        onChange={(e) => setNewOnly(e.target.checked)}
+                        className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
+                      />
+                    </label>
                   </div>
                 </div>
 
-                {/* Sale and New */}
-                <div className="space-y-3 border-t border-white/10 pt-4">
-                  <label className="flex items-center justify-between cursor-pointer select-none">
-                    <span className="uppercase tracking-wider text-xs font-mono text-gray-300">Sale Pieces Only</span>
-                    <input
-                      type="checkbox"
-                      checked={saleOnly}
-                      onChange={(e) => setSaleOnly(e.target.checked)}
-                      className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between cursor-pointer select-none">
-                    <span className="uppercase tracking-wider text-xs font-mono text-gray-300">New Arrivals Only</span>
-                    <input
-                      type="checkbox"
-                      checked={newOnly}
-                      onChange={(e) => setNewOnly(e.target.checked)}
-                      className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
-                    />
-                  </label>
+                {/* Drawer Bottom Actions */}
+                <div className="p-6 border-t border-white/10 bg-[#10131E]/80 flex items-center gap-3">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    fullWidth
+                    onClick={() => setMobileFiltersOpen(false)}
+                  >
+                    View {filteredProducts.length} Silhouettes
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="px-4 py-3 border border-white/20 text-xs uppercase tracking-wider hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer shrink-0 font-mono"
+                    title="Reset all filters"
+                  >
+                    Reset
+                  </button>
                 </div>
-              </div>
-
-              {/* Drawer Bottom Actions */}
-              <div className="p-6 border-t border-white/10 bg-[#10131E]/80 flex items-center gap-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  fullWidth
-                  onClick={() => setMobileFiltersOpen(false)}
-                >
-                  View {filteredProducts.length} Silhouettes
-                </Button>
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="px-4 py-3 border border-white/20 text-xs uppercase tracking-wider hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer shrink-0 font-mono"
-                  title="Reset all filters"
-                >
-                  Reset
-                </button>
-              </div>
-            </aside>
+              </motion.aside>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Persistent Quick View Modal */}
       <ProductQuickViewModal
@@ -726,6 +754,6 @@ export default function ShopPage() {
         isOpen={Boolean(quickViewProduct)}
         onClose={() => setQuickViewProduct(null)}
       />
-    </div>
+    </PageTransition>
   )
 }

@@ -1,12 +1,17 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, ArrowRight, Check, Copy, Sparkles, Eye, ZoomIn, ShieldCheck, Compass } from 'lucide-react'
+import { motion, useMotionValue, useSpring } from 'framer-motion'
+import { ArrowUpRight, ArrowRight, Check, Copy, Sparkles, Eye, ZoomIn, ShieldCheck, Compass, MoveDown } from 'lucide-react'
 import { PRODUCTS } from '../data/products'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import Button from '../components/ui/Button'
 import NewsletterForm from '../components/common/NewsletterForm'
 import { formatCurrency } from '../utils/formatters'
+import PageTransition from '../components/motion/PageTransition'
+import TextReveal from '../components/motion/TextReveal'
+import FadeInView from '../components/motion/FadeInView'
+import TiltCard from '../components/motion/TiltCard'
 
 const RUNWAY_LOOKS = [
   {
@@ -120,6 +125,25 @@ export default function HomePage() {
   const [quickViewProduct, setQuickViewProduct] = useState(null)
   const [copiedCode, setCopiedCode] = useState(false)
 
+  // Mouse-driven subtle parallax for hero artwork
+  const heroMouseX = useMotionValue(0)
+  const heroMouseY = useMotionValue(0)
+  const heroParallaxX = useSpring(heroMouseX, { damping: 28, stiffness: 100 })
+  const heroParallaxY = useSpring(heroMouseY, { damping: 28, stiffness: 100 })
+
+  const handleHeroMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - (rect.left + rect.width / 2)) / 32
+    const y = (e.clientY - (rect.top + rect.height / 2)) / 32
+    heroMouseX.set(x)
+    heroMouseY.set(y)
+  }
+
+  const handleHeroMouseLeave = () => {
+    heroMouseX.set(0)
+    heroMouseY.set(0)
+  }
+
   const activeLook = RUNWAY_LOOKS[activeLookIndex]
   const lookProduct = PRODUCTS.find((p) => p.id === activeLook.featuredProductId) || PRODUCTS[0]
 
@@ -132,26 +156,46 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-28 sm:space-y-36">
+    <PageTransition className="space-y-28 sm:space-y-36">
       {/* =========================================================================
           HERO SECTION: Neo-Luxury Noir Runway Campaign
-          Atmospheric obsidian lighting, gold gradient typography, liquid glass specs
+          Interactive mouse parallax, staggered typography, atmospheric wordmark
           ========================================================================= */}
-      <section className="relative px-4 sm:px-6 lg:px-8 pt-4 sm:pt-10" aria-label="Hero Campaign">
-        <div className="max-w-7xl mx-auto">
+      <section
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+        className="relative px-4 sm:px-6 lg:px-8 pt-4 sm:pt-10 overflow-hidden"
+        aria-label="Hero Campaign"
+      >
+        {/* Cinematic Watermark Wordmark */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-10 sm:-top-16 left-1/2 -translate-x-1/2 select-none pointer-events-none opacity-[0.035] overflow-hidden whitespace-nowrap z-0"
+        >
+          <motion.span
+            initial={{ letterSpacing: '0.4em', opacity: 0 }}
+            animate={{ letterSpacing: '0.65em', opacity: 1 }}
+            transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
+            className="font-serif text-[19vw] font-bold text-white tracking-[0.65em] leading-none block"
+          >
+            AUREVA
+          </motion.span>
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
           {/* Top Overline and Coordinates */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-4 mb-8 sm:mb-12 gap-2">
-            <div>
+            <FadeInView direction="down" delay={0.1}>
               <span className="tag-overline text-[#D4AF37] font-mono">AUTUMN / WINTER 2026</span>
               <p className="text-xs uppercase tracking-[0.25em] text-gray-400 mt-1 font-mono">
                 STUDIO RUNWAY — MONOGRAPH NO. 04
               </p>
-            </div>
-            <div className="text-right hidden sm:block">
+            </FadeInView>
+            <FadeInView direction="down" delay={0.2} className="text-right hidden sm:block">
               <span className="text-[11px] font-mono tracking-widest text-gray-500">
                 48.8566° N, 2.3522° E (PARIS ATELIER)
               </span>
-            </div>
+            </FadeInView>
           </div>
 
           {/* Hero Main Grid */}
@@ -159,51 +203,66 @@ export default function HomePage() {
             {/* Left Narrative Column */}
             <div className="lg:col-span-5 space-y-7 sm:space-y-9 order-2 lg:order-1">
               <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 glass-panel border-[#D4AF37]/30 text-white text-[10px] tracking-[0.28em] uppercase px-3 py-1 font-mono">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-                  <span className="text-[#D4AF37]">RUNWAY MONOGRAPH</span>
-                </div>
+                <FadeInView direction="up" delay={0.15}>
+                  <div className="inline-flex items-center gap-2 glass-panel border-[#D4AF37]/30 text-white text-[10px] tracking-[0.28em] uppercase px-3 py-1 font-mono">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
+                    <span className="text-[#D4AF37]">RUNWAY MONOGRAPH</span>
+                  </div>
+                </FadeInView>
+
+                {/* Staggered Word Reveal Headline */}
                 <h1 className="editorial-title text-4xl sm:text-6xl xl:text-7xl font-serif text-white tracking-tight leading-[0.94]">
-                  STYLE WITHOUT <br />
-                  <span className="italic font-light gold-gradient-text">BOUNDARIES.</span>
+                  <TextReveal text="STYLE WITHOUT" delay={0.2} />
+                  <br />
+                  <span className="italic font-light gold-gradient-text inline-block">
+                    <TextReveal text="BOUNDARIES." delay={0.35} />
+                  </span>
                 </h1>
               </div>
 
-              <p className="font-serif text-lg sm:text-xl text-gray-300 leading-relaxed font-light max-w-lg">
-                An architectural dialogue between sculpted structure and effortless drape — handcrafted for individuals who inhabit space with quiet intention.
-              </p>
+              <FadeInView direction="up" delay={0.3}>
+                <p className="font-serif text-lg sm:text-xl text-gray-300 leading-relaxed font-light max-w-lg">
+                  An architectural dialogue between sculpted structure and effortless drape — handcrafted for individuals who inhabit space with quiet intention.
+                </p>
+              </FadeInView>
 
-              <div className="pt-2 flex flex-wrap gap-4 items-center">
-                <Button variant="primary" size="lg" to="/shop">
+              <FadeInView direction="up" delay={0.4} className="pt-2 flex flex-wrap gap-4 items-center">
+                <Button variant="primary" size="lg" to="/shop" magnetic>
                   DISCOVER THE COLLECTION
                 </Button>
                 <Button variant="secondary" size="lg" to="/about">
                   THE MANIFESTO
                 </Button>
-              </div>
+              </FadeInView>
 
               {/* Atelier Specs in Liquid Glass */}
-              <div className="grid grid-cols-3 gap-3 pt-6 border-t border-white/10">
-                <div className="glass-panel p-3 border-white/5">
-                  <span className="block font-serif text-xl sm:text-2xl text-white">100%</span>
-                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Virgin Merino</span>
+              <FadeInView direction="up" delay={0.5}>
+                <div className="grid grid-cols-3 gap-3 pt-6 border-t border-white/10">
+                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
+                    <span className="block font-serif text-xl sm:text-2xl text-white">100%</span>
+                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Virgin Merino</span>
+                  </div>
+                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
+                    <span className="block font-serif text-xl sm:text-2xl text-[#D4AF37]">04</span>
+                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Monograph Edit</span>
+                  </div>
+                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
+                    <span className="block font-serif text-xl sm:text-2xl text-white">Ltd</span>
+                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Numbered Batches</span>
+                  </div>
                 </div>
-                <div className="glass-panel p-3 border-white/5">
-                  <span className="block font-serif text-xl sm:text-2xl text-[#D4AF37]">04</span>
-                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Monograph Edit</span>
-                </div>
-                <div className="glass-panel p-3 border-white/5">
-                  <span className="block font-serif text-xl sm:text-2xl text-white">Ltd</span>
-                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Numbered Batches</span>
-                </div>
-              </div>
+              </FadeInView>
             </div>
 
-            {/* Right Monumental Visual Column */}
+            {/* Right Monumental Visual Column with Subtle Mouse Parallax */}
             <div className="lg:col-span-7 order-1 lg:order-2">
-              <div className="relative">
+              <TiltCard maxTilt={5} scaleOnHover={1.01} className="relative">
                 {/* Main Hero Photograph with Liquid Glass Frame */}
-                <div className="relative aspect-[4/5] sm:aspect-[16/11] lg:aspect-[4/5] overflow-hidden bg-[#121522] border border-white/10 group shadow-2xl">
+                <motion.div
+                  style={{ x: heroParallaxX, y: heroParallaxY }}
+                  className="relative aspect-[4/5] sm:aspect-[16/11] lg:aspect-[4/5] overflow-hidden bg-[#121522] border border-white/10 group shadow-2xl"
+                  data-cursor="explore"
+                >
                   <img
                     src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=88"
                     alt="AUREVA Runway Campaign Look 01 Editorial Silhouette"
@@ -229,14 +288,31 @@ export default function HomePage() {
                       <Eye size={18} />
                     </button>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Overlaid Floating Batch Tag */}
                 <div className="hidden sm:block absolute -top-4 -right-4 glass-panel-gold bg-[#0E1018] px-4 py-2 text-[10px] tracking-[0.25em] uppercase font-mono text-[#D4AF37] shadow-xl">
                   EDITION: 42 PIECES WORLDWIDE
                 </div>
-              </div>
+              </TiltCard>
             </div>
+          </div>
+
+          {/* Animated Scroll Down Indicator */}
+          <div className="pt-12 sm:pt-16 flex items-center justify-between text-xs font-mono text-gray-500 border-t border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-4 border border-white/20 rounded-full flex justify-center p-0.5">
+                <motion.div
+                  animate={{ y: [0, 9, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+                  className="h-1.5 w-1 rounded-full bg-[#D4AF37]"
+                />
+              </div>
+              <span className="text-[10px] tracking-[0.24em] uppercase text-gray-400">SCROLL TO IMMERSE</span>
+            </div>
+            <span className="hidden sm:inline text-[10px] tracking-[0.26em] text-gray-500 font-mono">
+              PARIS ATELIER • ALLOCATIONS ACTIVE
+            </span>
           </div>
         </div>
       </section>
@@ -434,23 +510,136 @@ export default function HomePage() {
       </section>
 
       {/* =========================================================================
+          CAMPAIGN MONOGRAPH: Layered Asymmetrical Editorial Section
+          Oversized typography, layered overlapping imagery, custom "EXPLORE" cursor
+          ========================================================================= */}
+      <section className="px-4 sm:px-6 lg:px-8 relative overflow-hidden" aria-label="Campaign Monograph">
+        <div className="max-w-7xl mx-auto">
+          <FadeInView direction="up">
+            <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 sm:mb-16 gap-4">
+              <div>
+                <span className="tag-overline text-[#D4AF37] font-mono">EDITORIAL MONOGRAPH — 04</span>
+                <h2 className="editorial-title text-3xl sm:text-6xl font-serif text-white mt-1">
+                  The Architecture of Form
+                </h2>
+              </div>
+              <p className="text-xs text-gray-400 tracking-widest uppercase font-mono max-w-xs">
+                A DIALOGUE BETWEEN TENSION, BIAS-CUT DRAPE, AND METROPOLITAN SILENCE.
+              </p>
+            </div>
+          </FadeInView>
+
+          {/* Asymmetrical Layered Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Layered Images (Break-the-grid composition) */}
+            <div className="lg:col-span-7 relative" data-cursor="explore">
+              <FadeInView direction="up" delay={0.15}>
+                {/* Primary Hero Campaign Photo with Tilt */}
+                <TiltCard maxTilt={5} glare={true} className="aspect-[4/5] sm:aspect-[16/11] w-full overflow-hidden border border-white/10 bg-[#0E1018]">
+                  <img
+                    src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85"
+                    alt="Aureva Autumn Winter Haute Couture Campaign"
+                    className="w-full h-full object-cover object-center filter grayscale-[15%] contrast-[1.08] hover:scale-105 transition-transform duration-1000 ease-out"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#08090D]/90 via-transparent to-transparent pointer-events-none" />
+                  
+                  {/* Embedded editorial caption */}
+                  <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-white pointer-events-none">
+                    <div>
+                      <span className="text-[10px] font-mono tracking-widest text-[#D4AF37] uppercase block">LOOK 04 / PLATE IX</span>
+                      <p className="font-serif text-lg sm:text-xl font-light">Structural Bias Trench in Oxblood Silk-Wool</p>
+                    </div>
+                    <span className="hidden sm:inline font-mono text-[10px] tracking-widest text-gray-400">PALAIS DE TOKYO</span>
+                  </div>
+                </TiltCard>
+              </FadeInView>
+
+              {/* Secondary Overlapping Floating Photo (Layered) */}
+              <FadeInView direction="left" delay={0.3} className="absolute -bottom-8 -right-4 sm:-bottom-12 sm:-right-8 w-44 sm:w-64 z-20 shadow-2xl">
+                <TiltCard maxTilt={8} className="aspect-[3/4] border border-[#D4AF37]/30 bg-[#141724] p-1.5 backdrop-blur-md">
+                  <div className="relative w-full h-full overflow-hidden">
+                    <img
+                      src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=800&q=85"
+                      alt="Campaign Detail Textile Close-up"
+                      className="w-full h-full object-cover object-top hover:scale-110 transition-transform duration-700 ease-out"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#08090D]/80 to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-wider block">TEXTILE DETAIL</span>
+                      <p className="text-[11px] font-mono text-gray-300">Biella 720 GSM Weave</p>
+                    </div>
+                  </div>
+                </TiltCard>
+              </FadeInView>
+            </div>
+
+            {/* Right Editorial Copy & Quote Column */}
+            <div className="lg:col-span-5 space-y-8 lg:pl-6 pt-6 lg:pt-0">
+              <FadeInView direction="right" delay={0.2} className="space-y-4">
+                <div className="inline-flex items-center gap-2 glass-panel border-[#D4AF37]/30 text-white text-[10px] tracking-[0.28em] uppercase px-3 py-1 font-mono">
+                  <Sparkles size={12} className="text-[#D4AF37]" />
+                  <span>SEASONAL STATEMENT</span>
+                </div>
+                <blockquote className="font-serif italic text-2xl sm:text-3xl lg:text-4xl text-white font-light leading-snug">
+                  "We treat cloth not merely as a garment, but as space sculpted by momentum."
+                </blockquote>
+                <p className="text-xs sm:text-sm text-gray-300 font-light leading-relaxed">
+                  Rejecting fast-fashion obsolescence, the Autumn / Winter 2026 monograph was developed across eighteen months of tactile trial in Paris and Biella. Each silhouette balances monumental proportion with weightless kinetic drape.
+                </p>
+              </FadeInView>
+
+              <FadeInView direction="right" delay={0.3} className="space-y-6 pt-4 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="glass-panel p-4 border-white/10">
+                    <span className="font-mono text-[10px] text-[#D4AF37] uppercase tracking-wider block">EDITION RUN</span>
+                    <span className="font-serif text-xl sm:text-2xl text-white block mt-1">120 Pieces</span>
+                    <span className="text-[10px] text-gray-400 font-mono">Numbered salon certificates</span>
+                  </div>
+                  <div className="glass-panel p-4 border-white/10">
+                    <span className="font-mono text-[10px] text-[#D4AF37] uppercase tracking-wider block">ORIGIN CERTIFIED</span>
+                    <span className="font-serif text-xl sm:text-2xl text-white block mt-1">100% Traceable</span>
+                    <span className="text-[10px] text-gray-400 font-mono">Piedmont & Lyon Mills</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 pt-2">
+                  <Button variant="primary" size="md" to="/shop" magnetic={true}>
+                    VIEW MONOGRAPH COLLECTION
+                  </Button>
+                  <Link
+                    to="/about"
+                    className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-gray-300 hover:text-[#D4AF37] transition-colors"
+                  >
+                    <span>READ ATELIER ESSAY</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </FadeInView>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
           SECTION 2: Shop by Category: Women, Men and Accessories
           Liquid glass cards with subtle gold glow on hover
           ========================================================================= */}
       <section className="px-4 sm:px-6 lg:px-8" aria-label="Shop by Category">
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 gap-4">
-            <div>
-              <span className="tag-overline text-[#D4AF37] font-mono">CURATED DEPARTMENTS</span>
-              <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-                Shop By Category
-              </h2>
+          <FadeInView direction="up">
+            <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 gap-4">
+              <div>
+                <span className="tag-overline text-[#D4AF37] font-mono">CURATED DEPARTMENTS</span>
+                <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
+                  Shop By Category
+                </h2>
+              </div>
+              <p className="text-xs text-gray-400 tracking-wider uppercase font-mono">
+                THREE DISCIPLINARY STUDIES IN READY-TO-WEAR
+              </p>
             </div>
-            <p className="text-xs text-gray-400 tracking-wider uppercase font-mono">
-              THREE DISCIPLINARY STUDIES IN READY-TO-WEAR
-            </p>
-          </div>
+          </FadeInView>
 
           {/* 3 Structured Category Cards in Liquid Glass */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -741,6 +930,6 @@ export default function HomePage() {
         isOpen={Boolean(quickViewProduct)}
         onClose={() => setQuickViewProduct(null)}
       />
-    </div>
+    </PageTransition>
   )
 }

@@ -29,6 +29,8 @@ export function CartProvider({ children }) {
   const [rawCart, setCart] = useLocalStorage('aureva_cart_v1', [])
   const [appliedCoupon, setAppliedCoupon] = useLocalStorage('aureva_coupon_v1', null)
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [recentAddedItem, setRecentAddedItem] = useState(null)
+  const [cartBounced, setCartBounced] = useState(false)
 
   // Ensure cart is strictly an array of valid items
   const cart = Array.isArray(rawCart)
@@ -38,12 +40,25 @@ export function CartProvider({ children }) {
   // Generate unique cart item key based on product id, size and selected color
   const getItemKey = (productId, size, color) => `${productId}-${size || 'default'}-${color || 'default'}`
 
-  const addToCart = (product, size = null, color = null, quantity = 1) => {
-    setCart((prevCart) => {
-      const selectedSize = size || (product.sizes ? product.sizes[0] : 'Standard')
-      const selectedColor = color || (product.colors ? product.colors[0].name : 'Default')
-      const itemKey = getItemKey(product.id, selectedSize, selectedColor)
+  const clearRecentAddedItem = () => setRecentAddedItem(null)
 
+  const addToCart = (product, size = null, color = null, quantity = 1) => {
+    const selectedSize = size || (product.sizes ? product.sizes[0] : 'Standard')
+    const selectedColor = color || (product.colors ? product.colors[0].name : 'Default')
+
+    // Trigger visual toast & bag bounce micro-interaction
+    setRecentAddedItem({
+      product,
+      size: selectedSize,
+      color: selectedColor,
+      quantity,
+      id: Date.now(),
+    })
+    setCartBounced(true)
+    setTimeout(() => setCartBounced(false), 800)
+
+    setCart((prevCart) => {
+      const itemKey = getItemKey(product.id, selectedSize, selectedColor)
       const existingIndex = prevCart.findIndex(
         (item) => getItemKey(item.product.id, item.size, item.color) === itemKey
       )
@@ -211,6 +226,9 @@ export function CartProvider({ children }) {
         removeCoupon,
         grandTotal,
         createDemoOrder,
+        recentAddedItem,
+        clearRecentAddedItem,
+        cartBounced,
       }}
     >
       {children}

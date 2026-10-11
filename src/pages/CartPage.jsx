@@ -4,6 +4,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Truck, Check, AlertCircle
 import { useCart } from '../context/CartContext'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
+import PageTransition from '../components/motion/PageTransition'
 
 export default function CartPage() {
   const {
@@ -71,7 +72,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 text-white">
+    <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 text-white">
       {/* Editorial Page Header */}
       <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
@@ -349,6 +350,7 @@ export default function CartPage() {
                 size="lg"
                 fullWidth
                 to="/checkout"
+                magnetic={true}
                 icon={ArrowRight}
                 iconPosition="right"
               >
@@ -358,6 +360,6 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   )
 }

@@ -4,11 +4,20 @@ import Header from './Header'
 import Footer from './Footer'
 import CartDrawer from '../cart/CartDrawer'
 import ScrollToTop from './ScrollToTop'
+import ScrollProgress from '../motion/ScrollProgress'
+import CustomCursorSpotlight from '../motion/CustomCursorSpotlight'
+import CartFlyToast from '../motion/CartFlyToast'
 
 export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-[#08090D] text-[#F3F4F6] relative overflow-x-hidden selection:bg-[#D4AF37] selection:text-[#08090D]">
       <ScrollToTop />
+
+      {/* Global Scroll Reading Progress Bar */}
+      <ScrollProgress />
+
+      {/* Interactive Cursor Following Spotlight & Context Badge */}
+      <CustomCursorSpotlight />
 
       {/* Atmospheric Ambient Lighting Gradients */}
       <div className="ambient-glow-gold top-0 left-1/4 w-[600px] h-[600px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
@@ -30,6 +39,9 @@ export default function Layout() {
       <main id="main-content" className="flex-1 relative z-10">
         <Outlet />
       </main>
+
+      {/* Instant Feedback Cart Toast */}
+      <CartFlyToast />
 
       {/* Cart Flyout / Drawer */}
       <CartDrawer />
