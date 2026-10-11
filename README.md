@@ -192,28 +192,49 @@ This suite executes 99 automated tests verifying:
 | `npm run prisma:generate` | Generates latest `@prisma/client` from `schema.prisma` |
 | `npm run prisma:migrate` | Applies Prisma migrations to PostgreSQL |
 | `npm run prisma:seed` | Seeds categories, sample products, variants, and coupons |
-| `npm run test:db` | Runs the relational database and model verification test suite |
+| `npm run test:api` | **Runs the 37 end-to-end REST API automated tests against live server** |
+| `npm run test:db` | Runs the 99 relational database & model integrity tests |
 
 ---
 
 ## 📡 REST API Reference
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `GET` | `/api/health` | System diagnostics & PostgreSQL connection probe | No |
-| `GET` | `/api/products` | Retrieve catalog products (filters: `department`, `category`, `search`, `sort`) | No |
-| `GET` | `/api/products/:id` | Single product details with gallery images and variants | No |
-| `POST` | `/api/auth/register` | Register new user account (Zod validated, bcrypt hashed) | No |
-| `POST` | `/api/auth/login` | Authenticate user & issue secure `httpOnly` cookie | No |
-| `POST` | `/api/auth/logout` | Terminate session cookie | No |
-| `GET` | `/api/auth/me` | Fetch active authenticated patron profile | Yes |
-| `GET` | `/api/orders` | List order dossiers for user (or all if curator admin) | Yes |
-| `POST` | `/api/orders` | Place order (transactional stock decrement & Decimal totals) | Optional |
-| `GET` | `/api/orders/:id` | Fetch order dossier by ID or `AUR-` reference number | No |
-| `GET` | `/api/cart` | Retrieve customer shopping bag items | Optional |
-| `POST` | `/api/cart/items` | Add variant to bag (prevents duplicate lines) | Optional |
-| `DELETE` | `/api/cart/items/:itemId` | Remove item from shopping bag | Optional |
-| `GET` | `/api/wishlist` | Retrieve saved silhouettes | Yes |
-| `POST` | `/api/wishlist/toggle` | Save or remove silhouette from wishlist | Yes |
-| `POST` | `/api/coupons/validate` | Validate coupon code with Decimal precision | No |
-| `POST` | `/api/contact` | Submit atelier dossier inquiry | No |
+> For comprehensive documentation, request/response JSON payloads, and curl commands, refer to [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md).
+
+| Category | Method | Endpoint | Description | Auth Required |
+|---|---|---|---|---|
+| **Categories** | `GET` | `/api/categories` | List taxonomy categories with item counts | Public |
+| **Products** | `GET` | `/api/products` | Filterable catalog (page, limit, search, size, color, sort, sale) | Public (Active only) |
+| **Products** | `GET` | `/api/products/:id` | Single product by ID with variants and images | Public |
+| **Products** | `GET` | `/api/products/slug/:slug` | Single product by unique slug identifier | Public |
+| **Auth** | `POST` | `/api/auth/register` | Register new user account (Zod validated, bcrypt hashed) | Public |
+| **Auth** | `POST` | `/api/auth/login` | Authenticate user (rate limited) & issue `httpOnly` cookie | Public |
+| **Auth** | `POST` | `/api/auth/logout` | Terminate session cookie | Public |
+| **Auth** | `GET` | `/api/auth/me` | Fetch active authenticated patron profile | Customer |
+| **Customer** | `GET` | `/api/users/me` | Fetch customer account and default addresses | Customer |
+| **Customer** | `PATCH` | `/api/users/me` | Update customer name / phone | Customer |
+| **Customer** | `GET` | `/api/users/me/addresses` | List saved delivery addresses | Customer |
+| **Customer** | `POST` | `/api/users/me/addresses` | Add new delivery address | Customer |
+| **Customer** | `PATCH` | `/api/users/me/addresses/:id` | Update address (enforces ownership) | Customer |
+| **Customer** | `DELETE` | `/api/users/me/addresses/:id` | Delete address (enforces ownership) | Customer |
+| **Cart** | `GET` | `/api/cart` | Retrieve shopping cart items | Optional (Session / Customer) |
+| **Cart** | `POST` | `/api/cart/items` | Add variant to bag (stock checked, duplicate prevention) | Optional |
+| **Cart** | `PATCH` | `/api/cart/items/:itemId` | Update item quantity (ownership & stock verified) | Optional |
+| **Cart** | `DELETE` | `/api/cart/items/:itemId` | Remove item line (ownership verified) | Optional |
+| **Wishlist** | `GET` | `/api/wishlist` | Retrieve saved silhouettes | Customer |
+| **Wishlist** | `POST` | `/api/wishlist/items` | Add product to wishlist | Customer |
+| **Wishlist** | `DELETE` | `/api/wishlist/items/:productId` | Remove product from wishlist | Customer |
+| **Wishlist** | `POST` | `/api/wishlist/toggle` | Toggle product in wishlist | Customer |
+| **Coupons** | `POST` | `/api/coupons/validate` | Validate code against rules with Decimal precision | Public |
+| **Orders** | `POST` | `/api/orders` | Create order (transaction, stock decrement, idempotency) | Customer |
+| **Orders** | `GET` | `/api/orders` | List customer orders (ownership enforced) | Customer |
+| **Orders** | `GET` | `/api/orders/:id` | Fetch order dossier by ID or `AUR-` reference | Customer |
+| **Admin** | `GET / POST` | `/api/admin/products` | Manage products (includes inactive, inventory counts) | **ADMIN Only** |
+| **Admin** | `PATCH / DELETE` | `/api/admin/products/:id` | Update / delete product | **ADMIN Only** |
+| **Admin** | `POST` | `/api/admin/products/:id/variants` | Add variant to product | **ADMIN Only** |
+| **Admin** | `PATCH` | `/api/admin/variants/:id/stock` | Adjust stock quantity directly | **ADMIN Only** |
+| **Admin** | `CRUD` | `/api/admin/categories` | Full category management | **ADMIN Only** |
+| **Admin** | `GET` | `/api/admin/orders` | View all orders across all patrons | **ADMIN Only** |
+| **Admin** | `PATCH` | `/api/admin/orders/:id/status` | Update `orderStatus` and `paymentStatus` | **ADMIN Only** |
+| **Admin** | `CRUD` | `/api/admin/coupons` | Manage promotional coupons | **ADMIN Only** |
+| **Contact** | `POST` | `/api/contact` | Submit atelier dossier concierge inquiry | Public |

@@ -3,18 +3,19 @@ import { successResponse, errorResponse } from '../utils/response.js'
 
 const mockCarts = new Map()
 
+function getCartIdentifier(req) {
+  const userId = req.user?.id || null
+  const sessionId = req.headers['x-session-id'] || req.cookies?.aureva_session_id || null
+  return { userId, sessionId, key: userId || sessionId || 'anonymous_cart' }
+}
+
+/**
+ * Get current shopping cart
+ * Endpoint: GET /api/cart
+ */
 export async function getCart(req, res, next) {
   try {
-    const userId = req.user?.id
-    const sessionId = req.headers['x-session-id'] || null
-
-    if (!userId && !sessionId) {
-      return errorResponse(res, {
-        message: 'Active session or customer identifier required to retrieve cart.',
-        code: 'MISSING_SESSION',
-        statusCode: 400,
-      })
-    }
+    const { userId, sessionId, key } = getCartIdentifier(req)
 
     if (dbStatus.isConnected && prisma) {
       try {
@@ -26,7 +27,7 @@ export async function getCart(req, res, next) {
                 variant: {
                   include: {
                     product: {
-                      include: { images: true },
+                      include: { images: true, category: true },
                     },
                   },
                 },
@@ -44,11 +45,9 @@ export async function getCart(req, res, next) {
       }
     }
 
-    const key = userId || sessionId
     const cart = mockCarts.get(key) || { id: `mock-cart-${key}`, items: [] }
-
     return successResponse(res, {
-      message: 'Cart retrieved from cache',
+      message: 'Cart retrieved successfully',
       data: cart,
     })
   } catch (error) {
@@ -56,19 +55,14 @@ export async function getCart(req, res, next) {
   }
 }
 
+/**
+ * Add product variant to shopping cart
+ * Endpoint: POST /api/cart/items
+ */
 export async function addToCart(req, res, next) {
   try {
-    const userId = req.user?.id || null
-    const sessionId = req.headers['x-session-id'] || null
+    const { userId, sessionId, key } = getCartIdentifier(req)
     const { variantId, quantity = 1 } = req.body
-
-    if (!variantId) {
-      return errorResponse(res, {
-        message: 'Product variant identifier is required.',
-        code: 'MISSING_VARIANT',
-        statusCode: 400,
-      })
-    }
 
     if (quantity <= 0) {
       return errorResponse(res, {
@@ -80,15 +74,14 @@ export async function addToCart(req, res, next) {
 
     if (dbStatus.isConnected && prisma) {
       try {
-        // Validate variant and available inventory
         const variant = await prisma.productVariant.findUnique({
           where: { id: variantId },
           include: { product: true },
         })
 
-        if (!variant) {
+        if (!variant || !variant.product.isActive) {
           return errorResponse(res, {
-            message: 'Product variant not found.',
+            message: 'Product variant is not available in atelier catalogue.',
             code: 'VARIANT_NOT_FOUND',
             statusCode: 404,
           })
@@ -96,13 +89,12 @@ export async function addToCart(req, res, next) {
 
         if (variant.stockQuantity < quantity) {
           return errorResponse(res, {
-            message: `Only ${variant.stockQuantity} units available in atelier stock.`,
+            message: `Requested quantity exceeds available stock (${variant.stockQuantity} available).`,
             code: 'INSUFFICIENT_STOCK',
             statusCode: 400,
           })
         }
 
-        // Find or create Cart
         let cart = await prisma.cart.findFirst({
           where: userId ? { userId } : { sessionId },
         })
@@ -116,7 +108,7 @@ export async function addToCart(req, res, next) {
           })
         }
 
-        // Upsert cart item to prevent duplicate cart lines for the same variant
+        // Upsert cart item to prevent duplicate lines for the same variant
         const cartItem = await prisma.cartItem.upsert({
           where: {
             cartId_variantId: {
@@ -140,9 +132,9 @@ export async function addToCart(req, res, next) {
         })
 
         return successResponse(res, {
-          message: 'Silhouette variant allocated to bag',
+          message: 'Item allocated to shopping cart',
           data: cartItem,
-          statusCode: 200,
+          statusCode: 201,
         })
       } catch (err) {
         console.warn('[Cart Controller] Database write fallback:', err.message)
@@ -150,19 +142,18 @@ export async function addToCart(req, res, next) {
     }
 
     // In-memory fallback
-    const key = userId || sessionId || 'guest'
     let cart = mockCarts.get(key)
     if (!cart) {
       cart = { id: `mock-cart-${key}`, items: [] }
       mockCarts.set(key, cart)
     }
 
-    const existingIndex = cart.items.findIndex((item) => item.variantId === variantId)
-    if (existingIndex > -1) {
-      cart.items[existingIndex].quantity += quantity
+    const existing = cart.items.find((i) => i.variantId === variantId)
+    if (existing) {
+      existing.quantity += quantity
     } else {
       cart.items.push({
-        id: `mock-item-${Date.now()}`,
+        id: `mock-cart-item-${Date.now()}`,
         variantId,
         quantity,
         createdAt: new Date().toISOString(),
@@ -172,28 +163,166 @@ export async function addToCart(req, res, next) {
     return successResponse(res, {
       message: 'Item added to shopping bag',
       data: cart,
+      statusCode: 201,
     })
   } catch (error) {
     next(error)
   }
 }
 
+/**
+ * Update quantity of cart item (enforces cart ownership)
+ * Endpoint: PATCH /api/cart/items/:itemId
+ */
+export async function updateCartItem(req, res, next) {
+  try {
+    const { userId, sessionId, key } = getCartIdentifier(req)
+    const { itemId } = req.params
+    const { quantity } = req.body
+
+    if (quantity <= 0) {
+      return errorResponse(res, {
+        message: 'Quantity must be at least 1. To remove an item, use DELETE.',
+        code: 'INVALID_QUANTITY',
+        statusCode: 400,
+      })
+    }
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const item = await prisma.cartItem.findUnique({
+          where: { id: itemId },
+          include: {
+            cart: true,
+            variant: true,
+          },
+        })
+
+        if (!item) {
+          return errorResponse(res, {
+            message: 'Cart item not found',
+            code: 'NOT_FOUND',
+            statusCode: 404,
+          })
+        }
+
+        // Ownership verification
+        const isOwner = (userId && item.cart.userId === userId) || (sessionId && item.cart.sessionId === sessionId)
+        if (!isOwner) {
+          return errorResponse(res, {
+            message: 'Access denied to cart resource',
+            code: 'FORBIDDEN',
+            statusCode: 403,
+          })
+        }
+
+        // Stock check
+        if (item.variant && item.variant.stockQuantity < quantity) {
+          return errorResponse(res, {
+            message: `Requested quantity exceeds available stock (${item.variant.stockQuantity} available).`,
+            code: 'INSUFFICIENT_STOCK',
+            statusCode: 400,
+          })
+        }
+
+        const updated = await prisma.cartItem.update({
+          where: { id: itemId },
+          data: { quantity },
+          include: {
+            variant: {
+              include: { product: true },
+            },
+          },
+        })
+
+        return successResponse(res, {
+          message: 'Cart item quantity updated',
+          data: updated,
+        })
+      } catch (err) {
+        console.warn('[Cart Controller] Update fallback:', err.message)
+      }
+    }
+
+    const cart = mockCarts.get(key)
+    const item = cart?.items.find((i) => i.id === itemId)
+    if (!item) {
+      return errorResponse(res, {
+        message: 'Cart item not found',
+        code: 'NOT_FOUND',
+        statusCode: 404,
+      })
+    }
+
+    item.quantity = quantity
+    return successResponse(res, {
+      message: 'Cart item quantity updated',
+      data: item,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Remove item from cart (enforces cart ownership)
+ * Endpoint: DELETE /api/cart/items/:itemId
+ */
 export async function removeCartItem(req, res, next) {
   try {
+    const { userId, sessionId, key } = getCartIdentifier(req)
     const { itemId } = req.params
 
     if (dbStatus.isConnected && prisma) {
       try {
+        const item = await prisma.cartItem.findUnique({
+          where: { id: itemId },
+          include: { cart: true },
+        })
+
+        if (!item) {
+          return errorResponse(res, {
+            message: 'Cart item not found',
+            code: 'NOT_FOUND',
+            statusCode: 404,
+          })
+        }
+
+        // Ownership verification
+        const isOwner = (userId && item.cart.userId === userId) || (sessionId && item.cart.sessionId === sessionId)
+        if (!isOwner) {
+          return errorResponse(res, {
+            message: 'Access denied to cart resource',
+            code: 'FORBIDDEN',
+            statusCode: 403,
+          })
+        }
+
         await prisma.cartItem.delete({
           where: { id: itemId },
         })
-        return successResponse(res, { message: 'Item removed from shopping bag' })
+
+        return successResponse(res, {
+          message: 'Item removed from shopping cart',
+          data: { id: itemId },
+        })
       } catch (err) {
-        console.warn('[Cart Controller] Database delete fallback:', err.message)
+        console.warn('[Cart Controller] Delete fallback:', err.message)
       }
     }
 
-    return successResponse(res, { message: 'Item removed from shopping bag' })
+    const cart = mockCarts.get(key)
+    if (cart) {
+      const idx = cart.items.findIndex((i) => i.id === itemId)
+      if (idx !== -1) {
+        cart.items.splice(idx, 1)
+      }
+    }
+
+    return successResponse(res, {
+      message: 'Item removed from shopping cart',
+      data: { id: itemId },
+    })
   } catch (error) {
     next(error)
   }

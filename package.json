@@ -19,7 +19,8 @@
     "prisma:generate": "npm run prisma:generate --prefix server",
     "prisma:migrate": "npm run prisma:migrate --prefix server",
     "prisma:seed": "npm run prisma:seed --prefix server",
-    "test:db": "npm run test:db --prefix server"
+    "test:db": "npm run test:db --prefix server",
+    "test:api": "npm run test:api --prefix server"
   },
   "devDependencies": {
     "concurrently": "^9.2.5"

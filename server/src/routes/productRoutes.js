@@ -2,24 +2,18 @@ import { Router } from 'express'
 import {
   getProducts,
   getProductById,
+  getProductBySlug,
   getProductTaxonomy,
-  createProduct,
-  updateProduct,
-  deleteProduct,
 } from '../controllers/productController.js'
-import { requireAuth, requireAdmin } from '../middleware/authMiddleware.js'
+import validate from '../middleware/validate.js'
+import { productQuerySchema } from '../validators/productValidator.js'
 
 const router = Router()
 
 // Public Catalog Queries
-router.get('/', getProducts)
+router.get('/', validate(productQuerySchema, 'query'), getProducts)
 router.get('/meta/categories', getProductTaxonomy)
+router.get('/slug/:slug', getProductBySlug)
 router.get('/:id', getProductById)
 
-// Protected Admin Repertoire Management
-router.post('/', requireAuth, requireAdmin, createProduct)
-router.put('/:id', requireAuth, requireAdmin, updateProduct)
-router.delete('/:id', requireAuth, requireAdmin, deleteProduct)
-
 export default router
-

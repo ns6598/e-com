@@ -2,27 +2,50 @@ import productService from '../services/productService.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 
 /**
- * Get all products with optional filters, search, and sorting
+ * Get all products with pagination, search, category, size, color, price range, and sorting
  * Endpoint: GET /api/products
  */
 export async function getProducts(req, res, next) {
   try {
-    const { department, category, search, featured, isNew, sort, minPrice, maxPrice } = req.query
-
-    const result = await productService.list({
+    const {
+      page,
+      limit,
       department,
       category,
       search,
+      size,
+      color,
+      minPrice,
+      maxPrice,
+      isSale,
       featured,
       isNew,
       sort,
+    } = req.query
+
+    const result = await productService.list({
+      page,
+      limit,
+      department,
+      category,
+      search,
+      size,
+      color,
       minPrice,
       maxPrice,
+      isSale,
+      featured,
+      isNew,
+      sort,
+      includeInactive: false, // Public endpoint only returns active products
     })
 
     return successResponse(res, {
-      message: `Retrieved ${result.total} silhouettes`,
-      data: result.items,
+      message: `Retrieved ${result.items.length} silhouettes (total: ${result.total})`,
+      data: {
+        items: result.items,
+        pagination: result.pagination,
+      },
     })
   } catch (error) {
     next(error)
@@ -36,7 +59,7 @@ export async function getProducts(req, res, next) {
 export async function getProductById(req, res, next) {
   try {
     const { id } = req.params
-    const result = await productService.getById(id)
+    const result = await productService.getById(id, false)
 
     if (!result.product) {
       return errorResponse(res, {
@@ -56,62 +79,24 @@ export async function getProductById(req, res, next) {
 }
 
 /**
- * Get departments and categories taxonomy
- * Endpoint: GET /api/products/meta/categories
+ * Get single product by Slug
+ * Endpoint: GET /api/products/slug/:slug
  */
-export function getProductTaxonomy(req, res) {
-  const taxonomy = productService.getCategories()
-  return successResponse(res, {
-    message: 'Product taxonomy retrieved successfully',
-    data: taxonomy,
-  })
-}
-
-/**
- * Admin: Create a new product
- * Endpoint: POST /api/products
- */
-export async function createProduct(req, res, next) {
+export async function getProductBySlug(req, res, next) {
   try {
-    const { name, price, department, category } = req.body
-    if (!name || !price || !department || !category) {
-      return errorResponse(res, {
-        message: 'Name, price, department, and category are mandatory for new catalog silhouettes.',
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-      })
-    }
-
-    const result = await productService.create(req.body)
-    return successResponse(res, {
-      message: 'New silhouette successfully inducted into AUREVA repertoire',
-      data: result.product,
-      statusCode: 201,
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
-/**
- * Admin: Update an existing product
- * Endpoint: PUT /api/products/:id
- */
-export async function updateProduct(req, res, next) {
-  try {
-    const { id } = req.params
-    const result = await productService.update(id, req.body)
+    const { slug } = req.params
+    const result = await productService.getBySlug(slug, false)
 
     if (!result.product) {
       return errorResponse(res, {
-        message: `Product reference '${id}' not found in active catalog`,
+        message: `Product with slug '${slug}' not found in active repertoire`,
         code: 'PRODUCT_NOT_FOUND',
         statusCode: 404,
       })
     }
 
     return successResponse(res, {
-      message: 'Product silhouette updated successfully',
+      message: 'Product retrieved successfully',
       data: result.product,
     })
   } catch (error) {
@@ -120,28 +105,33 @@ export async function updateProduct(req, res, next) {
 }
 
 /**
- * Admin: Delete a product
- * Endpoint: DELETE /api/products/:id
+ * Get categories list
+ * Endpoint: GET /api/categories
  */
-export async function deleteProduct(req, res, next) {
+export async function getCategories(req, res, next) {
   try {
-    const { id } = req.params
-    const result = await productService.delete(id)
-
-    if (!result.success) {
-      return errorResponse(res, {
-        message: `Product reference '${id}' not found for decommissioning`,
-        code: 'PRODUCT_NOT_FOUND',
-        statusCode: 404,
-      })
-    }
-
+    const taxonomy = await productService.getCategories()
     return successResponse(res, {
-      message: 'Product silhouette retired from atelier repertoire',
-      data: { id },
+      message: 'Categories retrieved successfully',
+      data: taxonomy.categories,
     })
   } catch (error) {
     next(error)
   }
 }
 
+/**
+ * Get departments and categories taxonomy
+ * Endpoint: GET /api/products/meta/categories
+ */
+export async function getProductTaxonomy(req, res, next) {
+  try {
+    const taxonomy = await productService.getCategories()
+    return successResponse(res, {
+      message: 'Product taxonomy retrieved successfully',
+      data: taxonomy,
+    })
+  } catch (error) {
+    next(error)
+  }
+}

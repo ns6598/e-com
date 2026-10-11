@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import { prisma, dbStatus } from '../config/db.js'
 import { PRODUCTS, DEPARTMENTS, CATEGORIES } from '../data/products.js'
 
-function formatDatabaseProduct(p) {
+export function formatDatabaseProduct(p) {
   if (!p) return null
   const images = (p.images || []).map((img) => img.imageUrl || img)
   const variants = p.variants || []
@@ -16,6 +16,7 @@ function formatDatabaseProduct(p) {
     slug: p.slug,
     subtitle: p.subtitle,
     description: p.description,
+    categoryId: p.categoryId,
     category: p.category?.name || 'Tailoring',
     department: p.category?.department || 'Women',
     price: Number(p.basePrice || p.price || 0),
@@ -24,14 +25,22 @@ function formatDatabaseProduct(p) {
     stock: variants.length > 0 ? totalStock : (p.stock || 10),
     isNew: Boolean(p.isNew),
     isFeatured: Boolean(p.isFeatured),
+    isSale: Boolean(p.comparisonPrice && Number(p.comparisonPrice) > Number(p.basePrice)),
     tag: p.tag,
-    images: images.length > 0 ? images : (Array.isArray(p.images) ? p.images : []),
-    sizes: sizes.length > 0 ? sizes : (p.sizes || ['One Size']),
-    colors: colors.length > 0 ? colors : (p.colors || []),
     materials: p.materials,
     careInstructions: p.careInstructions,
     details: p.details || [],
-    variants: p.variants || [],
+    images: images.length > 0 ? images : (Array.isArray(p.images) ? p.images : []),
+    sizes: sizes.length > 0 ? sizes : (p.sizes || ['One Size']),
+    colors: colors.length > 0 ? colors : (p.colors || []),
+    variants: variants.map((v) => ({
+      id: v.id,
+      size: v.size,
+      color: v.color,
+      sku: v.sku,
+      stockQuantity: v.stockQuantity,
+      image: v.image,
+    })),
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   }
@@ -39,67 +48,131 @@ function formatDatabaseProduct(p) {
 
 export const productService = {
   /**
-   * Retrieves products with filtering, search, and sorting
+   * Retrieves products with pagination, search, category, size, color, price range, sale, and sorting
+   * Only active products are returned to public users.
    */
-  async list({ department, category, search, featured, isNew, sort = 'featured', maxPrice, minPrice } = {}) {
+  async list({
+    page = 1,
+    limit = 12,
+    department,
+    category,
+    search,
+    size,
+    color,
+    minPrice,
+    maxPrice,
+    isSale,
+    featured,
+    isNew,
+    sort = 'featured',
+    includeInactive = false,
+  } = {}) {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1)
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 12))
+    const skip = (pageNum - 1) * limitNum
+
     // 1. Prisma Relational Query if Database is Connected
     if (dbStatus.isConnected && prisma) {
       try {
-        const where = { isActive: true }
+        const where = {}
+        if (!includeInactive) {
+          where.isActive = true
+        }
 
         if (department && department !== 'All') {
           where.category = { department: { equals: department, mode: 'insensitive' } }
         }
+
         if (category && category !== 'All') {
           where.category = {
+            ...where.category,
             OR: [
               { name: { equals: category, mode: 'insensitive' } },
               { slug: { equals: category.toLowerCase() } },
             ],
           }
         }
-        if (featured === 'true' || featured === true) {
+
+        if (featured === true || featured === 'true') {
           where.isFeatured = true
         }
-        if (isNew === 'true' || isNew === true) {
+
+        if (isNew === true || isNew === 'true') {
           where.isNew = true
         }
-        if (minPrice || maxPrice) {
-          where.basePrice = {}
-          if (minPrice) where.basePrice.gte = new Prisma.Decimal(minPrice)
-          if (maxPrice) where.basePrice.lte = new Prisma.Decimal(maxPrice)
+
+        if (isSale === true || isSale === 'true') {
+          where.comparisonPrice = { not: null }
         }
+
+        if (minPrice !== undefined || maxPrice !== undefined) {
+          where.basePrice = {}
+          if (minPrice !== undefined) where.basePrice.gte = new Prisma.Decimal(minPrice)
+          if (maxPrice !== undefined) where.basePrice.lte = new Prisma.Decimal(maxPrice)
+        }
+
         if (search) {
+          const s = search.trim()
           where.OR = [
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-            { category: { name: { contains: search, mode: 'insensitive' } } },
+            { name: { contains: s, mode: 'insensitive' } },
+            { description: { contains: s, mode: 'insensitive' } },
+            { subtitle: { contains: s, mode: 'insensitive' } },
+            { category: { name: { contains: s, mode: 'insensitive' } } },
           ]
+        }
+
+        if (size || color) {
+          where.variants = {
+            some: {
+              ...(size ? { size: { equals: size, mode: 'insensitive' } } : {}),
+              ...(color ? { color: { equals: color, mode: 'insensitive' } } : {}),
+            },
+          }
         }
 
         const orderBy = []
         if (sort === 'price-asc') orderBy.push({ basePrice: 'asc' })
         else if (sort === 'price-desc') orderBy.push({ basePrice: 'desc' })
         else if (sort === 'newest') orderBy.push({ createdAt: 'desc' })
-        else if (sort === 'name') orderBy.push({ name: 'asc' })
+        else if (sort === 'popularity' || sort === 'featured') {
+          orderBy.push({ isFeatured: 'desc' }, { createdAt: 'desc' })
+        } else {
+          orderBy.push({ createdAt: 'desc' })
+        }
 
-        const dbProducts = await prisma.product.findMany({
-          where,
-          include: {
-            category: true,
-            images: { orderBy: { displayOrder: 'asc' } },
-            variants: true,
+        const [total, dbProducts] = await Promise.all([
+          prisma.product.count({ where }),
+          prisma.product.findMany({
+            where,
+            include: {
+              category: true,
+              images: { orderBy: { displayOrder: 'asc' } },
+              variants: true,
+            },
+            orderBy,
+            skip,
+            take: limitNum,
+          }),
+        ])
+
+        const items = dbProducts.map(formatDatabaseProduct)
+        const totalPages = Math.ceil(total / limitNum) || 1
+
+        return {
+          items,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages,
+            hasMore: pageNum < totalPages,
           },
-          orderBy: orderBy.length > 0 ? orderBy : undefined,
-        })
-
-        if (dbProducts && dbProducts.length > 0) {
-          const items = dbProducts.map(formatDatabaseProduct)
-          return {
-            items,
-            total: items.length,
-            source: 'database',
-          }
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages,
+          hasMore: pageNum < totalPages,
+          source: 'database',
         }
       } catch (err) {
         console.warn('[ProductService] Database query fallback:', err.message)
@@ -107,33 +180,59 @@ export const productService = {
     }
 
     // 2. In-Memory Catalog Fallback
-    let items = [...PRODUCTS]
+    let filtered = [...PRODUCTS]
+
+    if (!includeInactive) {
+      filtered = filtered.filter((p) => p.inStock !== false)
+    }
 
     if (department && department !== 'All') {
-      items = items.filter((p) => p.department.toLowerCase() === department.toLowerCase())
+      filtered = filtered.filter((p) => p.department.toLowerCase() === department.toLowerCase())
     }
+
     if (category && category !== 'All') {
-      items = items.filter(
+      const catLower = category.toLowerCase()
+      filtered = filtered.filter(
         (p) =>
-          p.category.toLowerCase() === category.toLowerCase() ||
-          p.subcategory?.toLowerCase() === category.toLowerCase()
+          p.category.toLowerCase() === catLower ||
+          p.subcategory?.toLowerCase() === catLower ||
+          p.category.toLowerCase().replace(/\s+/g, '-') === catLower
       )
     }
-    if (featured === 'true' || featured === true) {
-      items = items.filter((p) => p.isFeatured)
+
+    if (featured === true || featured === 'true') {
+      filtered = filtered.filter((p) => p.isFeatured)
     }
-    if (isNew === 'true' || isNew === true) {
-      items = items.filter((p) => p.isNew)
+
+    if (isNew === true || isNew === 'true') {
+      filtered = filtered.filter((p) => p.isNew)
     }
-    if (maxPrice) {
-      items = items.filter((p) => p.price <= parseFloat(maxPrice))
+
+    if (isSale === true || isSale === 'true') {
+      filtered = filtered.filter((p) => Boolean(p.isSale || p.originalPrice))
     }
-    if (minPrice) {
-      items = items.filter((p) => p.price >= parseFloat(minPrice))
+
+    if (minPrice !== undefined && minPrice !== null) {
+      filtered = filtered.filter((p) => p.price >= parseFloat(minPrice))
     }
+
+    if (maxPrice !== undefined && maxPrice !== null) {
+      filtered = filtered.filter((p) => p.price <= parseFloat(maxPrice))
+    }
+
+    if (size) {
+      filtered = filtered.filter((p) => p.sizes && p.sizes.some((s) => s.toLowerCase() === size.toLowerCase()))
+    }
+
+    if (color) {
+      filtered = filtered.filter(
+        (p) => p.colors && p.colors.some((c) => c.name.toLowerCase() === color.toLowerCase())
+      )
+    }
+
     if (search) {
-      const q = search.toLowerCase()
-      items = items.filter(
+      const q = search.toLowerCase().trim()
+      filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
@@ -143,16 +242,33 @@ export const productService = {
 
     // Sorting
     if (sort === 'price-asc') {
-      items.sort((a, b) => a.price - b.price)
+      filtered.sort((a, b) => a.price - b.price)
     } else if (sort === 'price-desc') {
-      items.sort((a, b) => b.price - a.price)
-    } else if (sort === 'name') {
-      items.sort((a, b) => a.name.localeCompare(b.name))
+      filtered.sort((a, b) => b.price - a.price)
+    } else if (sort === 'newest') {
+      filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0))
+    } else if (sort === 'popularity' || sort === 'featured') {
+      filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0))
     }
 
+    const total = filtered.length
+    const paginatedItems = filtered.slice(skip, skip + limitNum)
+    const totalPages = Math.ceil(total / limitNum) || 1
+
     return {
-      items,
-      total: items.length,
+      items: paginatedItems,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasMore: pageNum < totalPages,
+      },
+      page: pageNum,
+      limit: limitNum,
+      total,
+      totalPages,
+      hasMore: pageNum < totalPages,
       source: 'catalog_cache',
     }
   },
@@ -160,13 +276,18 @@ export const productService = {
   /**
    * Retrieves single product by ID or slug
    */
-  async getById(id) {
+  async getById(id, includeInactive = false) {
     if (dbStatus.isConnected && prisma) {
       try {
+        const where = {
+          OR: [{ id }, { slug: id }],
+        }
+        if (!includeInactive) {
+          where.isActive = true
+        }
+
         const product = await prisma.product.findFirst({
-          where: {
-            OR: [{ id }, { slug: id }],
-          },
+          where,
           include: {
             category: true,
             images: { orderBy: { displayOrder: 'asc' } },
@@ -184,17 +305,42 @@ export const productService = {
   },
 
   /**
-   * Retrieves taxonomy departments and categories
+   * Retrieves single product specifically by unique slug
+   */
+  async getBySlug(slug, includeInactive = false) {
+    return this.getById(slug, includeInactive)
+  },
+
+  /**
+   * Retrieves categories with product counts
    */
   async getCategories() {
     if (dbStatus.isConnected && prisma) {
       try {
-        const cats = await prisma.category.findMany({ orderBy: { name: 'asc' } })
-        if (cats && cats.length > 0) {
+        const categories = await prisma.category.findMany({
+          include: {
+            _count: {
+              select: { products: { where: { isActive: true } } },
+            },
+          },
+          orderBy: { name: 'asc' },
+        })
+
+        if (categories && categories.length > 0) {
+          const formatted = categories.map((c) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            department: c.department,
+            description: c.description,
+            image: c.image,
+            productsCount: c._count?.products || 0,
+          }))
+
           return {
-            departments: [...new Set(cats.map((c) => c.department))],
-            categories: cats.map((c) => c.name),
-            categoryRecords: cats,
+            categories: formatted,
+            departments: [...new Set(categories.map((c) => c.department))],
+            source: 'database',
           }
         }
       } catch (err) {
@@ -202,88 +348,87 @@ export const productService = {
       }
     }
 
+    // In-memory categories with computed counts
+    const counts = new Map()
+    for (const p of PRODUCTS) {
+      const cat = p.category
+      counts.set(cat, (counts.get(cat) || 0) + 1)
+    }
+
+    const categoriesList = (CATEGORIES || ['Coats', 'Tailoring', 'Dresses', 'Knitwear', 'Trousers', 'Leather Goods']).map(
+      (name, idx) => ({
+        id: `cat-${idx + 1}`,
+        name,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+        department: name === 'Leather Goods' || name === 'Accessories' ? 'Accessories' : 'Women',
+        description: `Curated ${name.toLowerCase()} monographs by AUREVA Atelier.`,
+        image: null,
+        productsCount: counts.get(name) || 0,
+      })
+    )
+
     return {
+      categories: categoriesList,
       departments: DEPARTMENTS || ['Women', 'Men', 'Accessories'],
-      categories: CATEGORIES || ['Coats', 'Tailoring', 'Dresses', 'Knitwear', 'Trousers', 'Leather Goods'],
+      source: 'catalog_cache',
     }
   },
 
   /**
    * Admin: Create new product transactionally
    */
-  async create(productData) {
-    const id = productData.id || `aur-${Date.now().toString(36)}`
-    const productRecord = {
-      ...productData,
-      id,
-      inStock: productData.inStock !== undefined ? productData.inStock : true,
-      stock: productData.stock !== undefined ? parseInt(productData.stock, 10) : 12,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+  async create(data) {
+    const slug = data.slug || data.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') + `-${Date.now().toString(36)}`
 
     if (dbStatus.isConnected && prisma) {
       try {
-        // Find or create category
-        const catSlug = (productData.category || 'tailoring').toLowerCase().replace(/\s+/g, '-')
-        const category = await prisma.category.upsert({
-          where: { slug: catSlug },
-          update: { department: productData.department || 'Women' },
-          create: {
-            name: productData.category || 'Tailoring',
-            slug: catSlug,
-            department: productData.department || 'Women',
-          },
-        })
-
-        const basePrice = new Prisma.Decimal(productRecord.price)
-        const comparisonPrice = productRecord.originalPrice ? new Prisma.Decimal(productRecord.originalPrice) : null
-
-        // Transaction: Product + Images + Default Variant
         const created = await prisma.$transaction(async (tx) => {
           const prod = await tx.product.create({
             data: {
-              name: productRecord.name,
-              slug: `${catSlug}-${Date.now().toString(36)}`,
-              subtitle: productRecord.subtitle || null,
-              description: productRecord.description || '',
-              categoryId: category.id,
-              basePrice,
-              comparisonPrice,
-              isActive: Boolean(productRecord.inStock),
-              isNew: Boolean(productRecord.isNew),
-              isFeatured: Boolean(productRecord.isFeatured),
-              tag: productRecord.tag || null,
-              materials: productRecord.materials || null,
-              careInstructions: productRecord.careInstructions || null,
-              details: productRecord.details || [],
+              name: data.name,
+              slug,
+              subtitle: data.subtitle || null,
+              description: data.description,
+              categoryId: data.categoryId,
+              basePrice: new Prisma.Decimal(data.basePrice),
+              comparisonPrice: data.comparisonPrice ? new Prisma.Decimal(data.comparisonPrice) : null,
+              isActive: data.isActive !== undefined ? data.isActive : true,
+              isFeatured: Boolean(data.isFeatured),
+              isNew: Boolean(data.isNew),
+              tag: data.tag || null,
+              materials: data.materials || null,
+              careInstructions: data.careInstructions || null,
+              details: data.details || [],
             },
           })
 
-          if (productRecord.images && productRecord.images.length > 0) {
-            for (let i = 0; i < productRecord.images.length; i++) {
+          if (data.images && data.images.length > 0) {
+            for (let i = 0; i < data.images.length; i++) {
               await tx.productImage.create({
                 data: {
                   productId: prod.id,
-                  imageUrl: productRecord.images[i],
-                  displayOrder: i,
+                  imageUrl: data.images[i].imageUrl || data.images[i],
+                  altText: data.images[i].altText || `${data.name} Angle ${i + 1}`,
+                  displayOrder: data.images[i].displayOrder || i,
                 },
               })
             }
           }
 
-          // Create base variants
-          const sizes = productRecord.sizes && productRecord.sizes.length > 0 ? productRecord.sizes : ['One Size']
-          for (const s of sizes) {
-            await tx.productVariant.create({
-              data: {
-                productId: prod.id,
-                size: s,
-                color: 'Default',
-                sku: `AUR-${prod.id.slice(0, 6).toUpperCase()}-${s}`,
-                stockQuantity: productRecord.stock || 10,
-              },
-            })
+          if (data.variants && data.variants.length > 0) {
+            for (const v of data.variants) {
+              const sku = v.sku || `AUR-${prod.id.slice(0, 6).toUpperCase()}-${v.size.replace(/\s+/g, '').toUpperCase()}-${v.color.slice(0, 3).toUpperCase()}`
+              await tx.productVariant.create({
+                data: {
+                  productId: prod.id,
+                  size: v.size,
+                  color: v.color,
+                  sku,
+                  stockQuantity: v.stockQuantity || 0,
+                  image: v.image || null,
+                },
+              })
+            }
           }
 
           return tx.product.findUnique({
@@ -298,7 +443,17 @@ export const productService = {
       }
     }
 
-    // In-memory catalog update
+    const productRecord = {
+      ...data,
+      id: `aur-${Date.now().toString(36)}`,
+      slug,
+      price: data.basePrice,
+      originalPrice: data.comparisonPrice,
+      inStock: data.isActive !== false,
+      stock: (data.variants || []).reduce((acc, v) => acc + (v.stockQuantity || 0), 0) || 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
     PRODUCTS.unshift(productRecord)
     return { product: productRecord, source: 'memory_store' }
   },
@@ -310,14 +465,22 @@ export const productService = {
     if (dbStatus.isConnected && prisma) {
       try {
         const data = {}
-        if (updates.name) data.name = updates.name
+        if (updates.name !== undefined) data.name = updates.name
+        if (updates.slug !== undefined) data.slug = updates.slug
         if (updates.subtitle !== undefined) data.subtitle = updates.subtitle
-        if (updates.description) data.description = updates.description
-        if (updates.price) data.basePrice = new Prisma.Decimal(updates.price)
-        if (updates.originalPrice !== undefined) {
-          data.comparisonPrice = updates.originalPrice ? new Prisma.Decimal(updates.originalPrice) : null
+        if (updates.description !== undefined) data.description = updates.description
+        if (updates.categoryId !== undefined) data.categoryId = updates.categoryId
+        if (updates.basePrice !== undefined) data.basePrice = new Prisma.Decimal(updates.basePrice)
+        if (updates.comparisonPrice !== undefined) {
+          data.comparisonPrice = updates.comparisonPrice ? new Prisma.Decimal(updates.comparisonPrice) : null
         }
-        if (updates.inStock !== undefined) data.isActive = Boolean(updates.inStock)
+        if (updates.isActive !== undefined) data.isActive = Boolean(updates.isActive)
+        if (updates.isFeatured !== undefined) data.isFeatured = Boolean(updates.isFeatured)
+        if (updates.isNew !== undefined) data.isNew = Boolean(updates.isNew)
+        if (updates.tag !== undefined) data.tag = updates.tag
+        if (updates.materials !== undefined) data.materials = updates.materials
+        if (updates.careInstructions !== undefined) data.careInstructions = updates.careInstructions
+        if (updates.details !== undefined) data.details = updates.details
 
         const updated = await prisma.product.update({
           where: { id },
@@ -335,8 +498,7 @@ export const productService = {
       PRODUCTS[index] = {
         ...PRODUCTS[index],
         ...updates,
-        price: updates.price !== undefined ? parseFloat(updates.price) : PRODUCTS[index].price,
-        stock: updates.stock !== undefined ? parseInt(updates.stock, 10) : PRODUCTS[index].stock,
+        price: updates.basePrice !== undefined ? updates.basePrice : PRODUCTS[index].price,
         updatedAt: new Date().toISOString(),
       }
       return { product: PRODUCTS[index], source: 'memory_store' }

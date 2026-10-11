@@ -1,26 +1,42 @@
 import { z } from 'zod'
 
-export const orderItemSchema = z.object({
-  productId: z.string().min(1, 'Product ID is required'),
-  name: z.string().min(1, 'Product name is required'),
-  price: z.number().positive('Price must be greater than zero'),
-  quantity: z.number().int().positive('Quantity must be at least 1'),
-  size: z.string().optional(),
-  color: z.string().optional(),
-  image: z.string().optional(),
+export const orderItemInputSchema = z.object({
+  variantId: z.string().optional().nullable(),
+  productId: z.string().optional().nullable(),
+  name: z.string().optional(),
+  price: z.number().optional(), // Server recalculates authoritative price
+  quantity: z.number().int().min(1, 'Quantity must be at least 1').default(1),
+  size: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
+  image: z.string().optional().nullable(),
 })
 
 export const createOrderSchema = z.object({
-  customerName: z.string().trim().min(2, 'Full customer name is required'),
-  customerEmail: z.string().trim().email('Valid email address is required'),
-  customerPhone: z.string().trim().min(7, 'Contact phone number is required'),
-  address: z.string().trim().min(5, 'Delivery street address is required'),
-  city: z.string().trim().min(2, 'City is required'),
-  state: z.string().trim().min(2, 'State / Province is required'),
-  postalCode: z.string().trim().min(3, 'Postal / PIN code is required'),
-  items: z.array(orderItemSchema).min(1, 'Order must contain at least one item'),
-  subtotal: z.number().nonnegative().optional(),
-  shipping: z.number().nonnegative().optional(),
-  discount: z.number().nonnegative().optional(),
+  customerName: z.string().trim().min(2, 'Full customer name is required').optional(),
+  customerEmail: z.string().trim().email('Valid email address is required').optional(),
+  customerPhone: z.string().trim().min(6, 'Contact phone number is required').optional(),
+  address: z.string().trim().min(5, 'Delivery street address is required').optional(),
+  city: z.string().trim().min(2, 'City is required').optional(),
+  state: z.string().trim().min(2, 'State / Province is required').optional(),
+  postalCode: z.string().trim().min(3, 'Postal / PIN code is required').optional(),
+  shippingAddress: z
+    .object({
+      name: z.string().trim().min(2),
+      phone: z.string().trim().min(6),
+      addressLine1: z.string().trim().min(5),
+      addressLine2: z.string().trim().optional().nullable(),
+      city: z.string().trim().min(2),
+      state: z.string().trim().min(2),
+      postalCode: z.string().trim().min(3),
+    })
+    .optional(),
+  items: z.array(orderItemInputSchema).min(1, 'Order must contain at least one silhouette item'),
+  couponCode: z.string().trim().optional().nullable(),
   paymentMethod: z.string().default('atelier_cod'),
+  idempotencyKey: z.string().trim().optional(),
+})
+
+export const updateOrderStatusSchema = z.object({
+  status: z.enum(['PENDING', 'PROCESSING', 'DISPATCHED', 'DELIVERED', 'CANCELLED']).optional(),
+  paymentStatus: z.enum(['PENDING', 'PAID', 'FAILED', 'REFUNDED']).optional(),
 })

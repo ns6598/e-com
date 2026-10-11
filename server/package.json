@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
-    "test:db": "node scripts/testDatabase.js"
+    "test:db": "node scripts/testDatabase.js",
+    "test:api": "node tests/api.test.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
