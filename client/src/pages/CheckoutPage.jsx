@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Lock,
@@ -6,12 +6,13 @@ import {
   Truck,
   AlertCircle,
   ShoppingBag,
-  Tag,
   Sparkles,
+  UserCheck,
+  RefreshCw,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-import api from '../services/api'
+import orderService from '../services/orderService'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
@@ -24,13 +25,11 @@ export default function CheckoutPage() {
     discount,
     appliedCoupon,
     grandTotal,
-    createDemoOrder,
     clearCart,
   } = useCart()
 
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, login } = useAuth()
   const navigate = useNavigate()
-
 
   // Form State
   const [formData, setFormData] = useState({
@@ -44,10 +43,12 @@ export default function CheckoutPage() {
     demoPaymentMethod: 'atelier_cod',
   })
 
-  // Validation errors state
+  // Validation & Submission State
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false)
 
   // Field validation rules
   const validateField = (name, value) => {
@@ -104,7 +105,7 @@ export default function CheckoutPage() {
   }
 
   // Pre-fill coordinates if authenticated patron
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       setFormData((prev) => ({
         ...prev,
@@ -119,8 +120,25 @@ export default function CheckoutPage() {
     }
   }, [user])
 
+  const handleQuickPatronAuth = async () => {
+    setIsQuickLoggingIn(true)
+    setApiError(null)
+    const res = await login('patron@aureva-studios.demo', 'AurevaSalon2026!')
+    setIsQuickLoggingIn(false)
+    if (!res.success) {
+      setApiError(res.message || 'Could not authenticate demo patron.')
+    }
+  }
+
   const handleSubmitOrder = async (e) => {
     e.preventDefault()
+    setApiError(null)
+
+    // Check authentication requirement
+    if (!isAuthenticated) {
+      setApiError('Order creation requires a verified patron session. Please sign in below or use one-click demo patron.')
+      return
+    }
 
     const newErrors = {}
     const fieldsToValidate = ['fullName', 'email', 'phone', 'address', 'city', 'state', 'postalCode']
@@ -154,11 +172,13 @@ export default function CheckoutPage() {
     }
 
     if (cart.length === 0) {
+      setApiError('Your shopping bag is empty. Please select silhouttes before finalizing order.')
       return
     }
 
     setIsSubmitting(true)
 
+    // Construct server-authoritative order payload
     const orderPayload = {
       customerName: formData.fullName.trim(),
       customerEmail: formData.email.trim(),
@@ -168,57 +188,45 @@ export default function CheckoutPage() {
       state: formData.state.trim(),
       postalCode: formData.postalCode.trim(),
       items: cart.map((i) => ({
-        productId: i.id,
-        name: i.name,
-        price: i.price,
+        variantId: i.variantId || undefined,
+        productId: i.product?.id || i.id,
+        name: i.product?.name,
+        price: i.product?.price,
         quantity: i.quantity,
-        size: i.selectedSize || null,
-        color: i.selectedColor || null,
-        image: i.images?.[0] || null,
+        size: i.size || null,
+        color: i.color || null,
+        image: i.product?.images?.[0] || null,
       })),
-      subtotal,
-      shipping,
-      discount,
+      couponCode: appliedCoupon ? appliedCoupon.code : null,
       paymentMethod: formData.demoPaymentMethod,
     }
 
     try {
-      const res = await api.post('/orders', orderPayload)
-      if (res.success && res.data) {
-        clearCart()
+      const createdOrder = await orderService.createOrder(orderPayload)
+      if (createdOrder) {
+        await clearCart()
+
         try {
           const localOrders = JSON.parse(localStorage.getItem('aureva_orders') || '[]')
-          localStorage.setItem('aureva_orders', JSON.stringify([res.data, ...localOrders]))
+          localStorage.setItem('aureva_orders', JSON.stringify([createdOrder, ...localOrders]))
         } catch {
           // Local storage handled
         }
 
         setIsSubmitting(false)
-        navigate(`/order-confirmation/${res.data.orderNumber || res.data.id}`, {
-          state: { order: res.data },
+        navigate(`/order-confirmation/${createdOrder.orderNumber || createdOrder.id}`, {
+          state: { order: createdOrder },
         })
         return
       }
     } catch (err) {
-      console.warn('[Checkout] API submission fallback:', err)
+      console.error('[Checkout] API Order Creation Error:', err)
+      setIsSubmitting(false)
+      setApiError(
+        err.message || 'The atelier order dispatch system could not finalize this order. Please verify your details.'
+      )
     }
-
-    // Resilient offline fallback
-    const createdOrder = createDemoOrder({
-      fullName: formData.fullName.trim(),
-      email: formData.email.trim(),
-      phone: formData.phone.trim(),
-      address: formData.address.trim(),
-      city: formData.city.trim(),
-      state: formData.state.trim(),
-      postalCode: formData.postalCode.trim(),
-      paymentMethod: formData.demoPaymentMethod,
-    })
-
-    setIsSubmitting(false)
-    navigate('/order-confirmation', { state: { order: createdOrder } })
   }
-
 
   if (cart.length === 0 && !isSubmitting) {
     return (
@@ -244,47 +252,80 @@ export default function CheckoutPage() {
 
   return (
     <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 text-white">
-      {/* Editorial Page Header */}
+      {/* Editorial Header */}
       <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="tag-overline text-[#D4AF37] font-mono">CONCIERGE CHECKOUT</span>
-          <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-white mt-1">
+          <span className="tag-overline text-[#D4AF37] font-mono">FINAL ACQUISITION</span>
+          <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
             Order Finalization
           </h1>
         </div>
-        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D4AF37] font-mono">
-          <Lock size={14} />
-          <span>Atelier Secure Protocol</span>
+        <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
+          <Lock size={13} className="text-[#D4AF37]" />
+          <span>PostgreSQL-Backed Secure Transaction</span>
         </div>
       </div>
 
-      {/* Demonstration Disclaimer Alert in Liquid Glass */}
-      <div className="glass-panel p-4 sm:p-5 text-xs text-white flex items-start gap-3 rounded-xs border-white/10">
-        <ShieldCheck size={20} className="text-[#D4AF37] shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold uppercase tracking-wider text-[11px] font-mono text-[#D4AF37]">
-            Frontend Demonstration Checkout
-          </p>
-          <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
-            This application is an editorial portfolio demo. No real payment card details will be requested or processed, and no real fulfillment order will be dispatched.
-          </p>
+      {/* Global Error Banner */}
+      {apiError && (
+        <div className="p-5 glass-panel border border-red-500/40 bg-[#1A0D14]/90 rounded-xs space-y-3">
+          <div className="flex items-center gap-2 text-red-400 text-xs uppercase tracking-wider font-mono font-semibold">
+            <AlertCircle size={16} />
+            <span>Order Finalization Notice</span>
+          </div>
+          <p className="text-sm font-serif text-gray-200">{apiError}</p>
         </div>
-      </div>
+      )}
 
+      {/* Unauthenticated Patron Alert with 1-Click Fast Auth */}
+      {!isAuthenticated && (
+        <div className="p-5 glass-panel border border-[#D4AF37]/40 bg-[#121420]/80 rounded-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-mono flex items-center gap-1.5 font-semibold">
+              <Sparkles size={14} />
+              <span>Patron Session Required</span>
+            </span>
+            <p className="text-xs text-gray-300 font-mono">
+              Order records are archived under verified patron accounts. Sign in to finalize checkout.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              disabled={isQuickLoggingIn}
+              onClick={handleQuickPatronAuth}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs uppercase tracking-wider font-mono font-semibold gold-gradient-bg text-[#08090D] hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <UserCheck size={14} />
+              <span>{isQuickLoggingIn ? 'Verifying...' : '1-Click Demo Patron'}</span>
+            </button>
+            <Link
+              to="/login"
+              state={{ from: '/checkout' }}
+              className="px-3.5 py-2 text-xs uppercase tracking-wider font-mono border border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-        {/* Left Column: Form Details */}
-        <form onSubmit={handleSubmitOrder} noValidate className="lg:col-span-7 space-y-8">
-          {/* Section 1: Customer Contact Info */}
+        {/* Left Column: Coordinates Form */}
+        <form onSubmit={handleSubmitOrder} className="lg:col-span-7 space-y-10" noValidate>
+          {/* Section 1: Contact Coordinates */}
           <div className="space-y-4">
             <h2 className="font-serif text-2xl text-white border-b border-white/10 pb-2">
-              01 / Contact Details
+              01 / Patron Coordinates
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Full Name */}
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                  Full Legal Name *
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono flex justify-between">
+                  <span>Full Legal Name *</span>
+                  {errors.fullName && <span className="text-[#E57373]">{errors.fullName}</span>}
                 </label>
                 <input
                   type="text"
@@ -292,23 +333,18 @@ export default function CheckoutPage() {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  placeholder="e.g. Navaneeth Sharma"
-                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                  placeholder="e.g. Elena Rostova"
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                     errors.fullName ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
-                {errors.fullName && (
-                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                    <AlertCircle size={12} />
-                    <span>{errors.fullName}</span>
-                  </p>
-                )}
               </div>
 
-              {/* Email Address */}
+              {/* Email */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                  Email Address for Courier Updates *
+                <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono flex justify-between">
+                  <span>Email Dispatch Address *</span>
+                  {errors.email && <span className="text-[#E57373]">{errors.email}</span>}
                 </label>
                 <input
                   type="email"
@@ -316,23 +352,18 @@ export default function CheckoutPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  placeholder="client@atelier.com"
-                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                  placeholder="elena@atelier-salon.fr"
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                     errors.email ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
-                {errors.email && (
-                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                    <AlertCircle size={12} />
-                    <span>{errors.email}</span>
-                  </p>
-                )}
               </div>
 
-              {/* Phone Number */}
+              {/* Phone */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                  Contact Phone Number *
+                <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono flex justify-between">
+                  <span>Contact Telephone *</span>
+                  {errors.phone && <span className="text-[#E57373]">{errors.phone}</span>}
                 </label>
                 <input
                   type="tel"
@@ -340,17 +371,11 @@ export default function CheckoutPage() {
                   value={formData.phone}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  placeholder="e.g. 9876543210"
+                  placeholder="+91 98765 43210"
                   className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                     errors.phone ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
-                {errors.phone && (
-                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                    <AlertCircle size={12} />
-                    <span>{errors.phone}</span>
-                  </p>
-                )}
               </div>
             </div>
           </div>
@@ -364,8 +389,9 @@ export default function CheckoutPage() {
             <div className="space-y-4">
               {/* Street Address */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                  Street Address & Residence *
+                <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono flex justify-between">
+                  <span>Street Address & Residence *</span>
+                  {errors.address && <span className="text-[#E57373]">{errors.address}</span>}
                 </label>
                 <input
                   type="text"
@@ -373,24 +399,18 @@ export default function CheckoutPage() {
                   value={formData.address}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  placeholder="e.g. 42 Lodhi Estate, Near India Habitat Centre"
-                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                  placeholder="42 Rue du Faubourg Saint-Honoré, Appt 4B"
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                     errors.address ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
-                {errors.address && (
-                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                    <AlertCircle size={12} />
-                    <span>{errors.address}</span>
-                  </p>
-                )}
               </div>
 
+              {/* City, State, Postal */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* City */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                    City *
+                  <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono">
+                    <span>City *</span>
                   </label>
                   <input
                     type="text"
@@ -398,23 +418,17 @@ export default function CheckoutPage() {
                     value={formData.city}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
-                    placeholder="New Delhi"
-                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                    placeholder="Paris"
+                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                       errors.city ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
-                  {errors.city && (
-                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                      <AlertCircle size={12} />
-                      <span>{errors.city}</span>
-                    </p>
-                  )}
+                  {errors.city && <p className="text-[11px] text-[#E57373] font-mono">{errors.city}</p>}
                 </div>
 
-                {/* State */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                    State / Region *
+                  <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono">
+                    <span>State / Province *</span>
                   </label>
                   <input
                     type="text"
@@ -422,23 +436,17 @@ export default function CheckoutPage() {
                     value={formData.state}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
-                    placeholder="Delhi"
-                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                    placeholder="Île-de-France"
+                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                       errors.state ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
-                  {errors.state && (
-                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                      <AlertCircle size={12} />
-                      <span>{errors.state}</span>
-                    </p>
-                  )}
+                  {errors.state && <p className="text-[11px] text-[#E57373] font-mono">{errors.state}</p>}
                 </div>
 
-                {/* Postal PIN */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
-                    Postal / PIN Code *
+                  <label className="text-[11px] uppercase tracking-wider text-gray-300 font-mono">
+                    <span>PIN / Postal *</span>
                   </label>
                   <input
                     type="text"
@@ -446,17 +454,12 @@ export default function CheckoutPage() {
                     value={formData.postalCode}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
-                    placeholder="110003"
+                    placeholder="75008"
                     className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
                       errors.postalCode ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
-                  {errors.postalCode && (
-                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
-                      <AlertCircle size={12} />
-                      <span>{errors.postalCode}</span>
-                    </p>
-                  )}
+                  {errors.postalCode && <p className="text-[11px] text-[#E57373] font-mono">{errors.postalCode}</p>}
                 </div>
               </div>
             </div>
@@ -465,7 +468,7 @@ export default function CheckoutPage() {
           {/* Section 3: Demo Payment Method */}
           <div className="space-y-4">
             <h2 className="font-serif text-2xl text-white border-b border-white/10 pb-2">
-              03 / Demo Payment Protocol
+              03 / Payment Protocol
             </h2>
 
             <div className="space-y-3">
@@ -480,29 +483,10 @@ export default function CheckoutPage() {
                 />
                 <div className="space-y-0.5 text-xs">
                   <span className="font-semibold uppercase tracking-wider text-white font-mono block">
-                    Demo Atelier Handover / Cash on Delivery
+                    White-Glove Atelier Handover / Cash on Delivery
                   </span>
                   <span className="text-gray-400 leading-relaxed block font-sans">
-                    Demonstration protocol. Verification conducted at delivery handover. Zero payment card details required.
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 p-4 glass-panel border-white/10 cursor-pointer rounded-xs">
-                <input
-                  type="radio"
-                  name="demoPaymentMethod"
-                  value="atelier_vault"
-                  checked={formData.demoPaymentMethod === 'atelier_vault'}
-                  onChange={handleInputChange}
-                  className="mt-1 accent-[#D4AF37]"
-                />
-                <div className="space-y-0.5 text-xs">
-                  <span className="font-semibold uppercase tracking-wider text-white font-mono block">
-                    Simulated Atelier Salon Account (Demo Test)
-                  </span>
-                  <span className="text-gray-400 leading-relaxed block font-sans">
-                    Authorizes this selection instantly against your demo salon account.
+                    Complimentary courier inspection conducted at delivery handover. Zero payment card details required.
                   </span>
                 </div>
               </label>
@@ -522,14 +506,14 @@ export default function CheckoutPage() {
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 border-2 border-[#08090D] border-t-transparent rounded-full animate-spin" />
-                  <span>Authorizing Demo Order...</span>
+                  <span>Authorizing Order on Atelier Database...</span>
                 </span>
               ) : (
-                `Complete Demo Order • ${formatCurrency(grandTotal)}`
+                `Complete Order • ${formatCurrency(grandTotal)}`
               )}
             </Button>
             <p className="text-center text-[10px] text-gray-500 uppercase tracking-widest mt-2 font-mono">
-              Zero real funds will be charged • Instantaneous demo authorization
+              PostgreSQL transactional persistence • Instant courier assignment
             </p>
           </div>
         </form>
@@ -570,47 +554,45 @@ export default function CheckoutPage() {
               ))}
             </div>
 
-            {/* Pricing Breakdown */}
-            <div className="border-t border-white/10 pt-4 space-y-3 text-xs text-gray-300">
-              <div className="flex justify-between">
-                <span>Merchandise Subtotal</span>
-                <span className="font-serif text-base font-semibold text-white">{formatCurrency(subtotal)}</span>
+            {/* Financial Ledger */}
+            <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs font-mono">
+              <div className="flex justify-between text-gray-400">
+                <span>Subtotal</span>
+                <span className="text-white font-medium">{formatCurrency(subtotal)}</span>
               </div>
 
-              {discount > 0 && (
-                <div className="flex justify-between text-[#D4AF37] font-medium font-mono">
-                  <span className="flex items-center gap-1">
-                    <Tag size={12} />
-                    <span>Privilege Savings ({appliedCoupon?.code})</span>
-                  </span>
+              {appliedCoupon && (
+                <div className="flex justify-between text-[#D4AF37]">
+                  <span>Privilege ({appliedCoupon.code})</span>
                   <span>-{formatCurrency(discount)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between">
-                <span>White-Glove Courier Delivery</span>
-                <span className="font-mono text-xs">
-                  {shipping === 0 ? (
-                    <span className="text-emerald-400 font-semibold uppercase text-[11px]">Complimentary</span>
-                  ) : (
-                    formatCurrency(shipping)
-                  )}
+              <div className="flex justify-between text-gray-400">
+                <span>White-Glove Courier</span>
+                <span className={shipping === 0 ? 'text-[#D4AF37] font-semibold' : 'text-white'}>
+                  {shipping === 0 ? 'COMPLIMENTARY' : formatCurrency(shipping)}
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-base font-semibold text-white">
-                <span>Total Authorization</span>
-                <span className="font-serif text-2xl text-white">{formatCurrency(grandTotal)}</span>
+              <div className="border-t border-white/10 pt-3 flex justify-between items-baseline">
+                <span className="font-serif text-base text-white">Grand Total</span>
+                <span className="font-serif text-2xl font-bold text-white">
+                  {formatCurrency(grandTotal)}
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* Logistics Guarantee */}
-            <div className="border-t border-white/10 pt-4 flex items-start gap-2.5 text-xs text-gray-400">
-              <Truck size={15} className="text-[#D4AF37] shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed font-mono">
-                Complimentary 30-day salon returns and insured express transit.
-              </p>
+          {/* Guarantees Box */}
+          <div className="p-5 glass-panel text-xs text-gray-400 space-y-3 rounded-xs border-white/10">
+            <div className="flex items-center gap-2 text-white font-mono uppercase tracking-wider text-[11px]">
+              <ShieldCheck size={16} className="text-[#D4AF37]" />
+              <span>AUREVA Salon Guarantees</span>
             </div>
+            <p className="leading-relaxed">
+              Every garment is inspected by senior salon curators prior to dispatch. Hand-signed authenticity monograph included.
+            </p>
           </div>
         </aside>
       </div>

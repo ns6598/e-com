@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import api from '../services/api'
+import authService from '../services/authService'
 
 const AuthContext = createContext(null)
 
@@ -21,23 +21,22 @@ export function AuthProvider({ children }) {
   })
   const [loading, setLoading] = useState(true)
 
-  // Verify active session on mount
+  // Verify active session on mount via cookie and token
   const checkAuth = useCallback(async () => {
-    const savedToken = localStorage.getItem('aureva_auth_token')
-    if (!savedToken) {
-      setLoading(false)
-      return
-    }
-
     try {
-      const res = await api.get('/auth/me')
-      if (res.success && res.data?.user) {
-        setUser(res.data.user)
-        localStorage.setItem('aureva_user', JSON.stringify(res.data.user))
+      const currentUser = await authService.getMe()
+      if (currentUser) {
+        setUser(currentUser)
+        localStorage.setItem('aureva_user', JSON.stringify(currentUser))
       }
-    } catch {
-      // If session token expired or invalid, keep fallback cached user or clear if unauthorized
-      console.warn('[AuthContext] Session verification note: maintaining local session')
+    } catch (err) {
+      // If unauthorized, clear stale credentials
+      if (err.status === 401 || err.status === 403) {
+        setUser(null)
+        setToken(null)
+        localStorage.removeItem('aureva_auth_token')
+        localStorage.removeItem('aureva_user')
+      }
     } finally {
       setLoading(false)
     }
@@ -49,20 +48,17 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const res = await api.post('/auth/login', { email, password })
-      if (res.success && res.data) {
-        const receivedUser = res.data.user
-        const receivedToken = res.data.token
-
-        setUser(receivedUser)
-        setToken(receivedToken)
-
-        localStorage.setItem('aureva_auth_token', receivedToken)
-        localStorage.setItem('aureva_user', JSON.stringify(receivedUser))
-
-        return { success: true, user: receivedUser }
+      const data = await authService.login(email, password)
+      if (data && data.user) {
+        setUser(data.user)
+        if (data.token) {
+          setToken(data.token)
+          localStorage.setItem('aureva_auth_token', data.token)
+        }
+        localStorage.setItem('aureva_user', JSON.stringify(data.user))
+        return { success: true, user: data.user }
       }
-      return { success: false, message: res.message || 'Login failed' }
+      return { success: false, message: 'Authentication failed' }
     } catch (err) {
       return {
         success: false,
@@ -73,20 +69,17 @@ export function AuthProvider({ children }) {
 
   const register = async (email, password, name) => {
     try {
-      const res = await api.post('/auth/register', { email, password, name })
-      if (res.success && res.data) {
-        const receivedUser = res.data.user
-        const receivedToken = res.data.token
-
-        setUser(receivedUser)
-        setToken(receivedToken)
-
-        localStorage.setItem('aureva_auth_token', receivedToken)
-        localStorage.setItem('aureva_user', JSON.stringify(receivedUser))
-
-        return { success: true, user: receivedUser }
+      const data = await authService.register(email, password, name)
+      if (data && data.user) {
+        setUser(data.user)
+        if (data.token) {
+          setToken(data.token)
+          localStorage.setItem('aureva_auth_token', data.token)
+        }
+        localStorage.setItem('aureva_user', JSON.stringify(data.user))
+        return { success: true, user: data.user }
       }
-      return { success: false, message: res.message || 'Registration failed' }
+      return { success: false, message: 'Registration failed' }
     } catch (err) {
       return {
         success: false,
@@ -97,7 +90,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout').catch(() => {})
+      await authService.logout()
     } finally {
       setUser(null)
       setToken(null)
@@ -108,14 +101,14 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (profileData) => {
     try {
-      const res = await api.put('/auth/profile', profileData)
-      if (res.success && res.data?.user) {
-        const updated = { ...user, ...res.data.user }
-        setUser(updated)
-        localStorage.setItem('aureva_user', JSON.stringify(updated))
-        return { success: true, user: updated }
+      const updatedUser = await authService.updateProfile(profileData)
+      if (updatedUser) {
+        const merged = { ...user, ...updatedUser }
+        setUser(merged)
+        localStorage.setItem('aureva_user', JSON.stringify(merged))
+        return { success: true, user: merged }
       }
-      return { success: false, message: res.message }
+      return { success: false, message: 'Failed to update preferences' }
     } catch (err) {
       return { success: false, message: err.message || 'Failed to update preferences' }
     }

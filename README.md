@@ -181,7 +181,36 @@ This suite executes 99 automated tests verifying:
 
 ---
 
-## 💻 Available Development Commands
+### 💻 Available Development Commands & Separate Terminal Execution
+
+The frontend and backend can be run together with a single command or run in separate terminals for independent debugging:
+
+#### Option A: Run Concurrently (Single Terminal)
+```bash
+npm run dev
+```
+Starts both the Express API backend (`http://localhost:5000`) and the Vite React frontend (`http://localhost:5173`) concurrently.
+
+#### Option B: Run in Separate Terminals (Recommended for active development)
+- **Terminal 1 — Backend REST API (`:5000`)**:
+  ```bash
+  cd server
+  npm run dev
+  ```
+  *Listens at `http://localhost:5000/api` with nodemon auto-restart and PostgreSQL Prisma queries.*
+
+- **Terminal 2 — Frontend Application (`:5173`)**:
+  ```bash
+  cd client
+  npm run dev
+  ```
+  *Listens at `http://localhost:5173`. Configured via `client/.env` (`VITE_API_URL=http://localhost:5000/api`).*
+
+#### Frontend Environment Configuration (`client/.env`)
+```env
+# AUREVA Client Environment Configuration
+VITE_API_URL=http://localhost:5000/api
+```
 
 | Command | Action |
 |---|---|

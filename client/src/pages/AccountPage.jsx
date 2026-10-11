@@ -18,13 +18,13 @@ import {
   Sliders,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import api from '../services/api'
+import orderService from '../services/orderService'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function AccountPage() {
-  const { user, logout, updateProfile, isAdmin } = useAuth()
+  const { user, loading, logout, updateProfile, isAdmin } = useAuth()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState('orders')
@@ -56,31 +56,21 @@ export default function AccountPage() {
     }
   }, [user])
 
-  // Fetch orders from API with fallback to local storage
+  // Fetch orders from real Express REST API
   useEffect(() => {
     let isMounted = true
 
     async function loadOrders() {
+      if (!user) return
       try {
         setLoadingOrders(true)
-        const res = await api.get('/orders')
-        if (isMounted && res.success && Array.isArray(res.data)) {
-          setOrders(res.data)
+        const orderData = await orderService.getOrders()
+        if (isMounted && Array.isArray(orderData)) {
+          setOrders(orderData)
           return
         }
       } catch (err) {
-        console.warn('[AccountPage] Orders API note: checking local orders fallback', err.message)
-      }
-
-      // Fallback to local storage orders
-      try {
-        const local = localStorage.getItem('aureva_orders')
-        if (local && isMounted) {
-          const parsed = JSON.parse(local)
-          setOrders(parsed)
-        }
-      } catch {
-        // Handled
+        console.warn('[AccountPage] Orders API note:', err.message)
       } finally {
         if (isMounted) setLoadingOrders(false)
       }
@@ -90,7 +80,7 @@ export default function AccountPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [user])
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault()
@@ -123,9 +113,33 @@ export default function AccountPage() {
         return 'border-[#D4AF37]/50 text-[#D4AF37] bg-[#D4AF37]/10'
       case 'CANCELLED':
         return 'border-red-500/40 text-red-300 bg-red-500/10'
-      default:
-        return 'border-white/20 text-gray-300 bg-white/5'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-28 text-center text-white space-y-4">
+        <div className="h-8 w-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="font-mono text-xs uppercase tracking-widest text-gray-400">Verifying Patron Salon Session...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-28 text-center text-white space-y-6">
+        <ShieldAlert size={44} className="text-[#D4AF37] mx-auto" />
+        <h1 className="editorial-title text-3xl font-serif">Patron Dossier Protected</h1>
+        <p className="text-xs text-gray-400 font-mono leading-relaxed">
+          This dossier archives your private acquisitions and bespoke tailoring records. Please sign into your salon account to proceed.
+        </p>
+        <div className="pt-2">
+          <Button variant="primary" size="lg" to="/login" state={{ from: '/account' }}>
+            Sign In to Salon Account
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

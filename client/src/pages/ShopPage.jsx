@@ -1,66 +1,101 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Filter, Search, X, SlidersHorizontal, ChevronRight, ChevronLeft, RotateCcw, Check, ArrowUpDown, Sparkles } from 'lucide-react'
-import { PRODUCTS, DEPARTMENTS, CATEGORIES, SIZES, COLORS } from '../data/products'
+import {
+  Filter,
+  Search,
+  X,
+  SlidersHorizontal,
+  ChevronRight,
+  ChevronLeft,
+  RotateCcw,
+  Check,
+  ArrowUpDown,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react'
 import productService from '../services/productService'
+import categoryService from '../services/categoryService'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import Button from '../components/ui/Button'
 import { formatCurrency } from '../utils/formatters'
 import PageTransition from '../components/motion/PageTransition'
-import FadeInView from '../components/motion/FadeInView'
+
+const DEPARTMENTS = ['All', 'Women', 'Men', 'Accessories']
+const SIZES = ['XS', 'S', 'M', 'L', 'XL']
+const COLORS = [
+  { name: 'Noir', hex: '#111111' },
+  { name: 'Ivory', hex: '#FDFBF7' },
+  { name: 'Burgundy', hex: '#651C26' },
+  { name: 'Camel', hex: '#B89778' },
+  { name: 'Charcoal', hex: '#2C2E35' },
+]
+
+function ProductCardSkeleton() {
+  return (
+    <div className="glass-card rounded-xs bg-[#0B0D14]/75 border border-white/10 p-3 h-full animate-pulse flex flex-col space-y-3">
+      <div className="aspect-[3/4] bg-white/5 rounded-xs" />
+      <div className="space-y-2 pt-2">
+        <div className="h-2.5 bg-white/10 w-1/3 rounded-xs" />
+        <div className="h-4 bg-white/15 w-4/5 rounded-xs" />
+        <div className="h-3.5 bg-[#D4AF37]/20 w-1/4 rounded-xs" />
+      </div>
+    </div>
+  )
+}
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Live products list from backend with fallback
-  const [catalogItems, setCatalogItems] = useState(PRODUCTS)
+  // Dynamic categories from backend
+  const [categories, setCategories] = useState([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
 
+  // Products and pagination state
+  const [products, setProducts] = useState([])
+  const [pagination, setPagination] = useState({ page: 1, limit: 9, total: 0, totalPages: 1 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Filter States initialized from URL
+  const [selectedDepartment, setSelectedDepartment] = useState(() => searchParams.get('department') || 'All')
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || 'All')
+  const [selectedSize, setSelectedSize] = useState('All')
+  const [selectedColor, setSelectedColor] = useState('All')
+  const [priceRange, setPriceRange] = useState(50000)
+  const [saleOnly, setSaleOnly] = useState(() => searchParams.get('filter') === 'sale')
+  const [newOnly, setNewOnly] = useState(() => searchParams.get('filter') === 'new' || searchParams.get('filter') === 'new-arrivals')
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '')
+  const [sortBy, setSortBy] = useState('featured')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // UI Drawer & Quick View
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [quickViewProduct, setQuickViewProduct] = useState(null)
+
+  // Load categories from PostgreSQL via REST API
   useEffect(() => {
     let isMounted = true
-    productService.getAll().then((data) => {
-      if (isMounted && Array.isArray(data) && data.length > 0) {
-        setCatalogItems(data)
+    async function loadTaxonomy() {
+      try {
+        const catData = await categoryService.getCategories()
+        if (isMounted && Array.isArray(catData)) {
+          setCategories(catData)
+        }
+      } catch (err) {
+        console.warn('[ShopPage] Categories API note:', err.message)
+      } finally {
+        if (isMounted) setLoadingCategories(false)
       }
-    })
+    }
+    loadTaxonomy()
     return () => {
       isMounted = false
     }
   }, [])
 
-  // Extract URL parameters
-  const initialDepartment = searchParams.get('department') || 'All'
-  const initialCategory = searchParams.get('category') || 'All'
-  const initialFilter = searchParams.get('filter') || ''
-  const initialSearch = searchParams.get('search') || ''
-
-  // Filter States
-  const [selectedDepartment, setSelectedDepartment] = useState(initialDepartment)
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory)
-  const [selectedSize, setSelectedSize] = useState('All')
-  const [selectedColor, setSelectedColor] = useState('All')
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 9
-
-  // Calculate dynamic catalog price bounds
-  const minCatalogPrice = useMemo(() => Math.min(...catalogItems.map((p) => p.price || 0)), [catalogItems])
-  const maxCatalogPrice = useMemo(() => Math.max(...catalogItems.map((p) => p.price || 0)), [catalogItems])
-
-
-  const [priceRange, setPriceRange] = useState(maxCatalogPrice)
-  const [saleOnly, setSaleOnly] = useState(initialFilter === 'sale')
-  const [newOnly, setNewOnly] = useState(initialFilter === 'new' || initialFilter === 'new-arrivals')
-  const [searchQuery, setSearchQuery] = useState(initialSearch)
-  const [sortBy, setSortBy] = useState('featured')
-
-  // Mobile filter drawer state & Quick View state
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [quickViewProduct, setQuickViewProduct] = useState(null)
-
-  // Synchronize state with URL search parameters
+  // Sync state when URL params change externally
   useEffect(() => {
     const dept = searchParams.get('department')
     const cat = searchParams.get('category')
@@ -76,166 +111,123 @@ export default function ShopPage() {
         setSelectedCategory(cat)
       }
     }
-    if (filter === 'new' || filter === 'new-arrivals') {
-      setNewOnly(true)
-    }
-    if (filter === 'sale') {
-      setSaleOnly(true)
-    }
-    if (q) setSearchQuery(q)
+    if (filter === 'new' || filter === 'new-arrivals') setNewOnly(true)
+    if (filter === 'sale') setSaleOnly(true)
+    if (q !== null && q !== undefined) setSearchQuery(q)
   }, [searchParams])
 
-  // Filtered and Sorted Products
-  const filteredProducts = useMemo(() => {
-    return catalogItems.filter((item) => {
-      // 1. Department Filter
-      if (selectedDepartment !== 'All') {
-        if (item.department.toLowerCase() !== selectedDepartment.toLowerCase()) {
-          return false
+  // Fetch products from real Express REST API
+  const fetchProducts = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const queryParams = {
+        page: currentPage,
+        limit: 9,
+        department: selectedDepartment !== 'All' ? selectedDepartment : undefined,
+        category: selectedCategory !== 'All' ? selectedCategory : undefined,
+        search: searchQuery.trim() || undefined,
+        size: selectedSize !== 'All' ? selectedSize : undefined,
+        color: selectedColor !== 'All' ? selectedColor : undefined,
+        maxPrice: priceRange < 50000 ? priceRange : undefined,
+        isSale: saleOnly ? true : undefined,
+        isNew: newOnly ? true : undefined,
+        sort: sortBy,
+      }
+
+      const result = await productService.getProducts(queryParams)
+      setProducts(result.items || [])
+      setPagination(
+        result.pagination || {
+          page: currentPage,
+          limit: 9,
+          total: result.items?.length || 0,
+          totalPages: 1,
         }
-      }
-
-      // 2. Category / Subcategory Filter
-      if (selectedCategory !== 'All') {
-        const catMatch =
-          item.category.toLowerCase() === selectedCategory.toLowerCase() ||
-          item.subcategory?.toLowerCase() === selectedCategory.toLowerCase()
-        if (!catMatch) return false
-      }
-
-      // 3. Size Filter
-      if (selectedSize !== 'All') {
-        if (!item.sizes || !item.sizes.includes(selectedSize)) {
-          return false
-        }
-      }
-
-      // 4. Color Filter
-      if (selectedColor !== 'All') {
-        if (!item.colors || !item.colors.some((c) => c.name.toLowerCase() === selectedColor.toLowerCase())) {
-          return false
-        }
-      }
-
-      // 5. Price Filter
-      if (item.price > priceRange) {
-        return false
-      }
-
-      // 6. Sale Products Only
-      if (saleOnly) {
-        if (!item.originalPrice || item.originalPrice <= item.price) {
-          return false
-        }
-      }
-
-      // 7. New Arrivals Only
-      if (newOnly) {
-        if (!item.isNew) {
-          return false
-        }
-      }
-
-      // 8. Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const matchesName = item.name.toLowerCase().includes(q)
-        const matchesCat = item.category.toLowerCase().includes(q) || item.subcategory?.toLowerCase().includes(q)
-        const matchesDept = item.department.toLowerCase().includes(q)
-        const matchesDesc = item.description?.toLowerCase().includes(q)
-        const matchesMat = item.materials && item.materials.toLowerCase().includes(q)
-        const matchesCol = item.collection && item.collection.toLowerCase().includes(q)
-
-        if (!matchesName && !matchesCat && !matchesDept && !matchesDesc && !matchesMat && !matchesCol) {
-          return false
-        }
-      }
-
-      return true
-    }).sort((a, b) => {
-      if (sortBy === 'newest') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0)
-      if (sortBy === 'price-asc') return a.price - b.price
-      if (sortBy === 'price-desc') return b.price - a.price
-      if (sortBy === 'name') return a.name.localeCompare(b.name)
-      return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
-    })
+      )
+    } catch (err) {
+      console.error('[ShopPage] Failed to fetch products:', err)
+      setError(err.message || 'Unable to retrieve current atelier silhouettes. Please check API connection.')
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
   }, [
-    catalogItems,
+    currentPage,
     selectedDepartment,
     selectedCategory,
+    searchQuery,
     selectedSize,
     selectedColor,
     priceRange,
     saleOnly,
     newOnly,
-    searchQuery,
     sortBy,
   ])
 
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1
-  const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage
-    return filteredProducts.slice(start, start + itemsPerPage)
-  }, [filteredProducts, currentPage, itemsPerPage])
-
-  // Reset page when filters change
+  // Trigger fetch whenever filters, sorting or page change
   useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
+
+  // Reset to page 1 whenever any filter condition changes
+  const handleFilterChange = (setter, value) => {
+    setter(value)
     setCurrentPage(1)
-  }, [
-    selectedDepartment,
-    selectedCategory,
-    selectedSize,
-    selectedColor,
-    priceRange,
-    saleOnly,
-    newOnly,
-    searchQuery,
-    sortBy,
-  ])
+  }
 
-
-  // Active filters list
+  // Active filter tags for quick removal
   const activeFilters = useMemo(() => {
     const list = []
     if (selectedDepartment !== 'All') {
-      list.push({ label: `Dept: ${selectedDepartment}`, clear: () => setSelectedDepartment('All') })
+      list.push({ label: `Dept: ${selectedDepartment}`, clear: () => handleFilterChange(setSelectedDepartment, 'All') })
     }
     if (selectedCategory !== 'All') {
-      list.push({ label: `Category: ${selectedCategory}`, clear: () => setSelectedCategory('All') })
+      list.push({ label: `Category: ${selectedCategory}`, clear: () => handleFilterChange(setSelectedCategory, 'All') })
     }
     if (selectedSize !== 'All') {
-      list.push({ label: `Size: ${selectedSize}`, clear: () => setSelectedSize('All') })
+      list.push({ label: `Size: ${selectedSize}`, clear: () => handleFilterChange(setSelectedSize, 'All') })
     }
     if (selectedColor !== 'All') {
-      list.push({ label: `Hue: ${selectedColor}`, clear: () => setSelectedColor('All') })
+      list.push({ label: `Hue: ${selectedColor}`, clear: () => handleFilterChange(setSelectedColor, 'All') })
     }
-    if (priceRange < maxCatalogPrice) {
-      list.push({ label: `Under ${formatCurrency(priceRange)}`, clear: () => setPriceRange(maxCatalogPrice) })
+    if (priceRange < 50000) {
+      list.push({ label: `Under ${formatCurrency(priceRange)}`, clear: () => handleFilterChange(setPriceRange, 50000) })
     }
     if (saleOnly) {
-      list.push({ label: 'Sale Pieces', clear: () => setSaleOnly(false) })
+      list.push({ label: 'Sale Pieces', clear: () => handleFilterChange(setSaleOnly, false) })
     }
     if (newOnly) {
-      list.push({ label: 'New Allocations', clear: () => setNewOnly(false) })
+      list.push({ label: 'New Allocations', clear: () => handleFilterChange(setNewOnly, false) })
     }
     if (searchQuery.trim()) {
-      list.push({ label: `Search: "${searchQuery}"`, clear: () => setSearchQuery('') })
+      list.push({ label: `Search: "${searchQuery}"`, clear: () => handleFilterChange(setSearchQuery, '') })
     }
     return list
-  }, [selectedDepartment, selectedCategory, selectedSize, selectedColor, priceRange, saleOnly, newOnly, searchQuery, maxCatalogPrice])
+  }, [selectedDepartment, selectedCategory, selectedSize, selectedColor, priceRange, saleOnly, newOnly, searchQuery])
 
   const clearAllFilters = () => {
     setSelectedDepartment('All')
     setSelectedCategory('All')
     setSelectedSize('All')
     setSelectedColor('All')
-    setPriceRange(maxCatalogPrice)
+    setPriceRange(50000)
     setSaleOnly(false)
     setNewOnly(false)
     setSearchQuery('')
+    setCurrentPage(1)
     setSearchParams({})
   }
+
+  // Category labels derived from backend or fallback list
+  const displayCategories = useMemo(() => {
+    if (categories.length > 0) {
+      const names = categories.map((c) => c.name)
+      return ['All', ...new Set(names)]
+    }
+    return ['All', 'Tailoring', 'Dresses', 'Knitwear', 'Outerwear', 'Leather', 'Accessories']
+  }, [categories])
 
   return (
     <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 text-white">
@@ -271,33 +263,35 @@ export default function ShopPage() {
               The Collection
             </h1>
             <p className="font-serif text-base sm:text-lg text-gray-300 font-light mt-2 max-w-2xl leading-relaxed">
-              Sculpted silhouettes, brutalist tailoring, and raw noble fibers. Designed in Paris, meticulously tailored across our heritage European ateliers.
+              Sculpted silhouettes, brutalist tailoring, and raw noble fibers. Sourced directly from our PostgreSQL-backed atelier inventory.
             </p>
           </div>
           <div className="text-right">
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#D4AF37] block">
-              Showing {filteredProducts.length} of {PRODUCTS.length} Silhouettes
+              {loading
+                ? 'Querying Atelier Database...'
+                : `Displaying ${pagination.total} Silhouettes`}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Top Controls: Search, Filter Toggle, Sort */}
+      {/* Top Controls: Search, Filter Drawer Toggle, Sort */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-        {/* Search Input Bar in Liquid Glass */}
+        {/* Search Input Bar */}
         <div className="relative flex-1 max-w-md">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleFilterChange(setSearchQuery, e.target.value)}
             placeholder="Search silhouettes, wools, coats, silks..."
             className="w-full bg-[#121522] border border-white/15 pl-9 pr-9 py-2.5 text-xs tracking-wider uppercase text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] font-mono"
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
+              onClick={() => handleFilterChange(setSearchQuery, '')}
               aria-label="Clear search query"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
             >
@@ -328,7 +322,7 @@ export default function ShopPage() {
             <ArrowUpDown size={14} className="text-gray-400 hidden sm:block" />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => handleFilterChange(setSortBy, e.target.value)}
               aria-label="Sort silhouettes"
               className="bg-[#121522] border border-white/15 px-3 py-2 text-xs uppercase tracking-wider text-gray-200 focus:outline-none focus:border-[#D4AF37] cursor-pointer font-mono"
             >
@@ -342,14 +336,14 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {/* Active Filter Chips with Smooth Layout Transitions */}
+      {/* Active Filter Chips */}
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1 pb-2">
           <span className="text-[10px] uppercase tracking-widest text-gray-400 font-mono mr-1">
             Active:
           </span>
           <AnimatePresence mode="popLayout">
-            {activeFilters.map((f, i) => (
+            {activeFilters.map((f) => (
               <motion.button
                 key={f.label}
                 layout
@@ -391,7 +385,7 @@ export default function ShopPage() {
                 <button
                   key={dept}
                   type="button"
-                  onClick={() => setSelectedDepartment(dept)}
+                  onClick={() => handleFilterChange(setSelectedDepartment, dept)}
                   className={`text-left py-1 tracking-wider uppercase transition-colors flex items-center justify-between cursor-pointer font-mono ${
                     selectedDepartment.toLowerCase() === dept.toLowerCase()
                       ? 'font-bold text-[#D4AF37]'
@@ -413,11 +407,11 @@ export default function ShopPage() {
               Garment Category
             </h3>
             <div className="flex flex-col space-y-1.5">
-              {CATEGORIES.map((cat) => (
+              {displayCategories.map((cat) => (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => handleFilterChange(setSelectedCategory, cat)}
                   className={`text-left py-1 tracking-wider uppercase transition-colors flex items-center justify-between cursor-pointer font-mono ${
                     selectedCategory.toLowerCase() === cat.toLowerCase()
                       ? 'font-bold text-[#D4AF37]'
@@ -440,21 +434,21 @@ export default function ShopPage() {
                 Max Price
               </h3>
               <span className="font-mono text-xs font-semibold text-white">
-                {formatCurrency(priceRange)}
+                {priceRange >= 50000 ? 'All Prices' : formatCurrency(priceRange)}
               </span>
             </div>
             <input
               type="range"
-              min={minCatalogPrice}
-              max={maxCatalogPrice}
-              step={100}
+              min={1000}
+              max={50000}
+              step={1000}
               value={priceRange}
-              onChange={(e) => setPriceRange(Number(e.target.value))}
+              onChange={(e) => handleFilterChange(setPriceRange, Number(e.target.value))}
               className="w-full accent-[#D4AF37] cursor-pointer"
             />
             <div className="flex items-center justify-between text-[10px] font-mono text-gray-500">
-              <span>{formatCurrency(minCatalogPrice)}</span>
-              <span>{formatCurrency(maxCatalogPrice)}</span>
+              <span>₹1,000</span>
+              <span>₹50,000+</span>
             </div>
           </div>
 
@@ -466,7 +460,7 @@ export default function ShopPage() {
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
-                onClick={() => setSelectedSize('All')}
+                onClick={() => handleFilterChange(setSelectedSize, 'All')}
                 className={`px-2.5 py-1 text-[10px] tracking-wider transition-colors border cursor-pointer font-mono ${
                   selectedSize === 'All'
                     ? 'border-[#D4AF37] bg-[#D4AF37] text-[#08090D] font-bold'
@@ -479,7 +473,7 @@ export default function ShopPage() {
                 <button
                   key={size}
                   type="button"
-                  onClick={() => setSelectedSize(size === selectedSize ? 'All' : size)}
+                  onClick={() => handleFilterChange(setSelectedSize, size === selectedSize ? 'All' : size)}
                   className={`px-2.5 py-1 text-[10px] tracking-wider transition-colors border cursor-pointer font-mono ${
                     selectedSize === size
                       ? 'border-[#D4AF37] bg-[#D4AF37] text-[#08090D] font-bold'
@@ -500,7 +494,7 @@ export default function ShopPage() {
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => setSelectedColor('All')}
+                onClick={() => handleFilterChange(setSelectedColor, 'All')}
                 className={`flex items-center gap-2 text-left py-0.5 tracking-wider uppercase transition-colors cursor-pointer w-full font-mono ${
                   selectedColor === 'All' ? 'font-bold text-[#D4AF37]' : 'text-gray-400 hover:text-white'
                 }`}
@@ -512,7 +506,7 @@ export default function ShopPage() {
                 <button
                   key={color.name}
                   type="button"
-                  onClick={() => setSelectedColor(color.name === selectedColor ? 'All' : color.name)}
+                  onClick={() => handleFilterChange(setSelectedColor, color.name === selectedColor ? 'All' : color.name)}
                   className={`flex items-center justify-between text-left py-0.5 tracking-wider uppercase transition-colors cursor-pointer w-full font-mono ${
                     selectedColor === color.name ? 'font-bold text-[#D4AF37]' : 'text-gray-400 hover:text-white'
                   }`}
@@ -537,7 +531,7 @@ export default function ShopPage() {
               <input
                 type="checkbox"
                 checked={saleOnly}
-                onChange={(e) => setSaleOnly(e.target.checked)}
+                onChange={(e) => handleFilterChange(setSaleOnly, e.target.checked)}
                 className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
               />
             </label>
@@ -547,7 +541,7 @@ export default function ShopPage() {
               <input
                 type="checkbox"
                 checked={newOnly}
-                onChange={(e) => setNewOnly(e.target.checked)}
+                onChange={(e) => handleFilterChange(setNewOnly, e.target.checked)}
                 className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
               />
             </label>
@@ -565,7 +559,37 @@ export default function ShopPage() {
 
         {/* Product Grid Container */}
         <main className="lg:col-span-9">
-          {filteredProducts.length === 0 ? (
+          {/* Error State Banner with Retry */}
+          {error && (
+            <div className="mb-8 p-6 glass-panel border border-red-500/40 bg-[#160D12]/90 rounded-xs space-y-3 text-center">
+              <div className="flex items-center justify-center gap-2 text-red-400 font-mono text-xs uppercase tracking-widest font-semibold">
+                <AlertCircle size={16} />
+                <span>Backend Catalog API Error</span>
+              </div>
+              <p className="text-sm font-serif text-gray-300 max-w-lg mx-auto">
+                {error}
+              </p>
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={fetchProducts}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-[#08090D] transition-all text-xs font-mono uppercase tracking-wider font-semibold cursor-pointer"
+                >
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  <span>Retry API Connection</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading Skeletons */}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 9 }).map((_, idx) => (
+                <ProductCardSkeleton key={idx} />
+              ))}
+            </div>
+          ) : products.length === 0 ? (
             /* Empty Results State */
             <div className="text-center py-24 glass-panel border border-dashed border-white/20 p-8 sm:p-12 space-y-5 rounded-xs">
               <div className="mx-auto h-12 w-12 rounded-full glass-panel-gold flex items-center justify-center text-[#D4AF37]">
@@ -573,7 +597,7 @@ export default function ShopPage() {
               </div>
               <h2 className="font-serif text-3xl text-white">No Silhouettes Match Your Criteria</h2>
               <p className="text-xs text-gray-400 tracking-wider max-w-md mx-auto leading-relaxed font-mono">
-                We could not find any archived garments that satisfy your current combination of department, category, size, color, or price constraints.
+                No archived garments in the PostgreSQL database satisfied your combination of department, category, size, color, or price constraints.
               </p>
               <div className="pt-2 flex justify-center">
                 <Button variant="primary" size="md" onClick={clearAllFilters}>
@@ -585,7 +609,7 @@ export default function ShopPage() {
             /* Product Grid */
             <div className="space-y-10">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedProducts.map((product, idx) => (
+                {products.map((product, idx) => (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, y: 16 }}
@@ -600,17 +624,17 @@ export default function ShopPage() {
                 ))}
               </div>
 
-              {/* Luxury Pagination Controls */}
-              {totalPages > 1 && (
+              {/* Server-Controlled Pagination */}
+              {pagination.totalPages > 1 && (
                 <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <span className="text-xs font-mono text-gray-400">
-                    Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} Silhouettes
+                    Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} Silhouettes
                   </span>
 
                   <div className="flex items-center gap-1.5 font-mono text-xs">
                     <button
                       type="button"
-                      disabled={currentPage === 1}
+                      disabled={pagination.page <= 1}
                       onClick={() => {
                         setCurrentPage((p) => Math.max(1, p - 1))
                         window.scrollTo({ top: 300, behavior: 'smooth' })
@@ -621,7 +645,7 @@ export default function ShopPage() {
                       <span className="hidden sm:inline">Prev</span>
                     </button>
 
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         type="button"
@@ -630,7 +654,7 @@ export default function ShopPage() {
                           window.scrollTo({ top: 300, behavior: 'smooth' })
                         }}
                         className={`h-9 w-9 border transition-all cursor-pointer flex items-center justify-center font-bold ${
-                          currentPage === page
+                          pagination.page === page
                             ? 'gold-gradient-bg text-[#08090D] border-[#D4AF37]'
                             : 'border-white/15 text-gray-300 hover:border-white/40'
                         }`}
@@ -641,9 +665,9 @@ export default function ShopPage() {
 
                     <button
                       type="button"
-                      disabled={currentPage === totalPages}
+                      disabled={pagination.page >= pagination.totalPages}
                       onClick={() => {
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
                         window.scrollTo({ top: 300, behavior: 'smooth' })
                       }}
                       className="px-3 py-2 border border-white/15 disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer flex items-center gap-1"
@@ -657,207 +681,101 @@ export default function ShopPage() {
             </div>
           )}
         </main>
-
       </div>
 
-      {/* Slide-in Filter Drawer on Mobile with Framer Motion */}
+      {/* Mobile Filter Drawer */}
       <AnimatePresence>
         {mobileFiltersOpen && (
-          <div className="fixed inset-0 z-50 overflow-hidden lg:hidden" role="dialog" aria-modal="true" aria-label="Filters Drawer">
+          <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md"
               onClick={() => setMobileFiltersOpen(false)}
-              aria-hidden="true"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden"
             />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 max-w-xs w-full bg-[#0B0D14] border-l border-white/10 z-50 p-6 overflow-y-auto space-y-6 text-white"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <span className="font-serif text-lg font-bold">Catalog Refinement</span>
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(false)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-            <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
-              <motion.aside
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                className="w-screen max-w-md bg-[#0C0E16] border-l border-white/10 flex flex-col shadow-2xl text-white h-full"
-              >
-                {/* Drawer Header */}
-                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#10131E]/60">
-                  <div>
-                    <h2 className="font-serif text-2xl font-light text-white">Refine Repertoire</h2>
-                    <p className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-mono mt-0.5">
-                      {filteredProducts.length} Silhouettes Matching
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMobileFiltersOpen(false)}
-                    aria-label="Close filter drawer"
-                    className="p-2 text-gray-400 hover:text-white cursor-pointer"
-                  >
-                    <X size={20} />
-                  </button>
+              {/* Department */}
+              <div className="space-y-2">
+                <h4 className="font-mono text-xs uppercase tracking-widest text-[#D4AF37]">Department</h4>
+                <div className="flex flex-wrap gap-2">
+                  {DEPARTMENTS.map((dept) => (
+                    <button
+                      key={dept}
+                      type="button"
+                      onClick={() => handleFilterChange(setSelectedDepartment, dept)}
+                      className={`px-3 py-1.5 text-xs font-mono tracking-wider border cursor-pointer ${
+                        selectedDepartment.toLowerCase() === dept.toLowerCase()
+                          ? 'border-[#D4AF37] bg-[#D4AF37] text-[#08090D] font-bold'
+                          : 'border-white/15 text-gray-300'
+                      }`}
+                    >
+                      {dept}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Scrollable Filter Options */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 text-xs">
-                  {/* Department */}
-                  <div className="space-y-3">
-                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                      Department
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEPARTMENTS.map((dept) => (
-                        <button
-                          key={dept}
-                          type="button"
-                          onClick={() => setSelectedDepartment(dept)}
-                          className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
-                            selectedDepartment.toLowerCase() === dept.toLowerCase()
-                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                              : 'border-white/15 text-gray-300'
-                          }`}
-                        >
-                          {dept}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Garment Category */}
-                  <div className="space-y-3">
-                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                      Category
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CATEGORIES.map((cat) => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`p-2 text-center text-xs uppercase tracking-wider border cursor-pointer font-mono ${
-                            selectedCategory.toLowerCase() === cat.toLowerCase()
-                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                              : 'border-white/15 text-gray-300'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Max Price */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                      <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold">
-                        Max Price
-                      </h3>
-                      <span className="font-mono text-xs font-semibold text-white">
-                        {formatCurrency(priceRange)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={minCatalogPrice}
-                      max={maxCatalogPrice}
-                      step={100}
-                      value={priceRange}
-                      onChange={(e) => setPriceRange(Number(e.target.value))}
-                      className="w-full accent-[#D4AF37] cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Sizes */}
-                  <div className="space-y-3">
-                    <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-1.5">
-                      Sizes
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSize('All')}
-                        className={`px-3 py-1.5 text-xs tracking-wider border cursor-pointer font-mono ${
-                          selectedSize === 'All'
-                            ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                            : 'border-white/15 text-gray-300'
-                        }`}
-                      >
-                        All
-                      </button>
-                      {SIZES.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => setSelectedSize(size === selectedSize ? 'All' : size)}
-                          className={`px-3 py-1.5 text-xs tracking-wider border cursor-pointer font-mono ${
-                            selectedSize === size
-                              ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                              : 'border-white/15 text-gray-300'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Sale and New */}
-                  <div className="space-y-3 border-t border-white/10 pt-4">
-                    <label className="flex items-center justify-between cursor-pointer select-none">
-                      <span className="uppercase tracking-wider text-xs font-mono text-gray-300">Sale Pieces Only</span>
-                      <input
-                        type="checkbox"
-                        checked={saleOnly}
-                        onChange={(e) => setSaleOnly(e.target.checked)}
-                        className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between cursor-pointer select-none">
-                      <span className="uppercase tracking-wider text-xs font-mono text-gray-300">New Arrivals Only</span>
-                      <input
-                        type="checkbox"
-                        checked={newOnly}
-                        onChange={(e) => setNewOnly(e.target.checked)}
-                        className="h-4 w-4 accent-[#D4AF37] cursor-pointer"
-                      />
-                    </label>
-                  </div>
+              {/* Category */}
+              <div className="space-y-2">
+                <h4 className="font-mono text-xs uppercase tracking-widest text-[#D4AF37]">Category</h4>
+                <div className="flex flex-wrap gap-2">
+                  {displayCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => handleFilterChange(setSelectedCategory, cat)}
+                      className={`px-3 py-1.5 text-xs font-mono tracking-wider border cursor-pointer ${
+                        selectedCategory.toLowerCase() === cat.toLowerCase()
+                          ? 'border-[#D4AF37] bg-[#D4AF37] text-[#08090D] font-bold'
+                          : 'border-white/15 text-gray-300'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Drawer Bottom Actions */}
-                <div className="p-6 border-t border-white/10 bg-[#10131E]/80 flex items-center gap-3">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={() => setMobileFiltersOpen(false)}
-                  >
-                    View {filteredProducts.length} Silhouettes
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={clearAllFilters}
-                    className="px-4 py-3 border border-white/20 text-xs uppercase tracking-wider hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer shrink-0 font-mono"
-                    title="Reset all filters"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </motion.aside>
-            </div>
-          </div>
+              {/* Apply & Close */}
+              <div className="pt-4 space-y-2">
+                <Button variant="primary" size="md" fullWidth onClick={() => setMobileFiltersOpen(false)}>
+                  Apply Refinements
+                </Button>
+                <Button variant="secondary" size="md" fullWidth onClick={clearAllFilters}>
+                  Clear All Filters
+                </Button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Persistent Quick View Modal */}
-      <ProductQuickViewModal
-        product={quickViewProduct}
-        isOpen={Boolean(quickViewProduct)}
-        onClose={() => setQuickViewProduct(null)}
-      />
+      {/* Quick View Modal */}
+      {quickViewProduct && (
+        <ProductQuickViewModal
+          product={quickViewProduct}
+          isOpen={Boolean(quickViewProduct)}
+          onClose={() => setQuickViewProduct(null)}
+        />
+      )}
     </PageTransition>
   )
 }

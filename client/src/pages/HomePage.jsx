@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { ArrowUpRight, ArrowRight, Check, Copy, Sparkles, Eye, ZoomIn, ShieldCheck, Compass, MoveDown } from 'lucide-react'
 import { PRODUCTS } from '../data/products'
+import productService from '../services/productService'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import Button from '../components/ui/Button'
@@ -117,8 +118,32 @@ const RUNWAY_LOOKS = [
 ]
 
 export default function HomePage() {
-  const newArrivals = PRODUCTS.filter((p) => p.isNew).slice(0, 4)
-  const bestSellers = PRODUCTS.filter((p) => p.isBestSeller).slice(0, 4)
+  const [liveProducts, setLiveProducts] = useState(PRODUCTS)
+
+  useEffect(() => {
+    let isMounted = true
+    productService
+      .getProducts({ limit: 12 })
+      .then((res) => {
+        if (isMounted && res.items?.length > 0) {
+          setLiveProducts(res.items)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const newArrivals = (liveProducts.filter((p) => p.isNew).length > 0
+    ? liveProducts.filter((p) => p.isNew)
+    : liveProducts
+  ).slice(0, 4)
+
+  const bestSellers = (liveProducts.filter((p) => p.isFeatured || p.isBestSeller).length > 0
+    ? liveProducts.filter((p) => p.isFeatured || p.isBestSeller)
+    : liveProducts.slice(4)
+  ).slice(0, 4)
 
   const [activeLookIndex, setActiveLookIndex] = useState(0)
   const [activeHotspot, setActiveHotspot] = useState(null)

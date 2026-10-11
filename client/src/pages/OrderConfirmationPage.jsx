@@ -111,7 +111,7 @@ export default function OrderConfirmationPage() {
           Thank You for Your Selection
         </h1>
         <p className="text-xs text-gray-300 leading-relaxed font-sans">
-          Your pieces have been allocated from the atelier archive. An official dispatch dossier will be sent to <strong className="text-white font-mono">{customer.email}</strong>.
+          Your pieces have been allocated from the atelier archive. An official dispatch dossier will be sent to <strong className="text-white font-mono">{customerEmail}</strong>.
         </p>
       </div>
 

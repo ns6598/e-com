@@ -17,7 +17,7 @@ export const api = axios.create({
   timeout: 15000,
 })
 
-// Request interceptor: attach bearer token if present in storage as backup to cookies
+// Request interceptor: attach bearer token and persistent anonymous session ID
 api.interceptors.request.use(
   (config) => {
     try {
@@ -25,6 +25,13 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
+
+      let sessionId = localStorage.getItem('aureva_session_id')
+      if (!sessionId) {
+        sessionId = `sess_${Math.random().toString(36).substring(2, 15)}_${Date.now()}`
+        localStorage.setItem('aureva_session_id', sessionId)
+      }
+      config.headers['x-session-id'] = sessionId
     } catch {
       // Storage access gracefully handled
     }

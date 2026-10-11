@@ -10,12 +10,11 @@ import {
   Truck,
   RotateCcw,
   ChevronDown,
-  X,
   Ruler,
   AlertCircle,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react'
-import { PRODUCTS } from '../data/products'
 import productService from '../services/productService'
 import { formatCurrency, calculateDiscountPercentage } from '../utils/formatters'
 import { useCart } from '../context/CartContext'
@@ -26,37 +25,46 @@ import SizeChartModal from '../components/common/SizeChartModal'
 import PageTransition from '../components/motion/PageTransition'
 import TiltCard from '../components/motion/TiltCard'
 
+function ProductDetailSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 animate-pulse text-white">
+      <div className="h-4 bg-white/10 w-48 rounded-xs" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="lg:col-span-7 aspect-[3/4] bg-white/5 border border-white/10 rounded-xs" />
+        <div className="lg:col-span-5 space-y-6">
+          <div className="h-3 bg-[#D4AF37]/30 w-32 rounded-xs" />
+          <div className="h-8 bg-white/15 w-4/5 rounded-xs" />
+          <div className="h-6 bg-[#D4AF37]/20 w-1/3 rounded-xs" />
+          <div className="h-20 bg-white/5 rounded-xs" />
+          <div className="h-12 bg-white/10 rounded-xs" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams()
   const { addToCart, openCart } = useCart()
   const { isInWishlist, toggleWishlist } = useWishlist()
 
-  // Find product from centralized catalog with live backend fetch
-  const [product, setProduct] = useState(() => PRODUCTS.find((p) => p.id === id) || null)
+  // State
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
+  const [relatedProducts, setRelatedProducts] = useState([])
 
-  useEffect(() => {
-    let isMounted = true
-    productService.getById(id).then((found) => {
-      if (isMounted && found) {
-        setProduct(found)
-      }
-    })
-    return () => {
-      isMounted = false
-    }
-  }, [id])
-
-  // Local state
+  // Purchase controls state
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [selectedColor, setSelectedColor] = useState('')
   const [selectedSize, setSelectedSize] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [sizeError, setSizeError] = useState(false)
+  const [colorError, setColorError] = useState(false)
   const [addedSuccess, setAddedSuccess] = useState(false)
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
-  const [sizeGuideUnit, setSizeGuideUnit] = useState('cm')
 
-  // Accordion state: toggle open sections
+  // Accordion state
   const [openAccordions, setOpenAccordions] = useState({
     commentary: true,
     materials: true,
@@ -64,24 +72,71 @@ export default function ProductDetailPage() {
     shipping: false,
   })
 
-  // Synchronize state when product ID in URL changes
+  // Fetch product directly from backend REST API using ID or Slug
+  useEffect(() => {
+    let isMounted = true
+    setLoading(true)
+    setFetchError(null)
+
+    async function loadProduct() {
+      try {
+        const found = await productService.getByIdOrSlug(id)
+        if (isMounted) {
+          setProduct(found)
+          // Also fetch real related products
+          if (found && found.department) {
+            productService
+              .getProducts({ department: found.department, limit: 4 })
+              .then((res) => {
+                if (isMounted && res.items) {
+                  setRelatedProducts(res.items.filter((p) => p.id !== found.id).slice(0, 3))
+                }
+              })
+              .catch(() => {})
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('[ProductDetailPage] Failed to fetch product:', err)
+          setFetchError(err.message || 'Product not found')
+          setProduct(null)
+        }
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    loadProduct()
+    return () => {
+      isMounted = false
+    }
+  }, [id])
+
+  // Synchronize selection state when product loads
   useEffect(() => {
     if (product) {
       setActiveImageIndex(0)
-      setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0].name : '')
+      const defaultColor = product.colors && product.colors.length > 0 ? product.colors[0].name : ''
+      setSelectedColor(defaultColor)
+
       const isOneSize =
         product.requiresSize === false ||
         (product.sizes && product.sizes.length === 1 && product.sizes[0].toLowerCase() === 'one size')
       setSelectedSize(isOneSize ? 'One Size' : '')
+
       setQuantity(1)
       setSizeError(false)
+      setColorError(false)
       setAddedSuccess(false)
     }
-  }, [product, id])
+  }, [product])
 
+  if (loading) {
+    return <ProductDetailSkeleton />
+  }
 
-  // Handle Missing Product Route gracefully
-  if (!product) {
+  // Handle Missing Product or API error
+  if (!product || fetchError) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-28 text-center space-y-6 text-white">
         <span className="tag-overline text-[#D4AF37] font-mono">ARCHIVAL REPERTOIRE</span>
@@ -89,9 +144,9 @@ export default function ProductDetailPage() {
           Silhouette Not Found
         </h1>
         <p className="font-serif text-lg text-gray-400 font-light max-w-md mx-auto">
-          The requested monograph piece may have been retired to our private salon archives or the catalog reference is invalid.
+          {fetchError || 'The requested monograph piece may have been retired to our private salon archives or the catalog reference is invalid.'}
         </p>
-        <div className="pt-4">
+        <div className="pt-4 flex justify-center gap-4">
           <Button variant="primary" size="lg" to="/shop">
             Return to Active Catalog
           </Button>
@@ -100,32 +155,36 @@ export default function ProductDetailPage() {
     )
   }
 
-  // Related products from the same department/category
-  const relatedProducts = PRODUCTS.filter(
-    (p) => p.id !== product.id && (p.department === product.department || p.category === product.category)
-  ).slice(0, 3)
-
   const isOneSize =
     product.requiresSize === false ||
     (product.sizes && product.sizes.length === 1 && product.sizes[0].toLowerCase() === 'one size')
 
   const discountPercent = calculateDiscountPercentage(product.price, product.originalPrice)
-  const isDiscounted = discountPercent > 0
   const inWishlist = isInWishlist(product.id)
   const maxStock = product.stock || 10
 
   const handleAddToCart = () => {
+    let hasValidationError = false
+
     if (!isOneSize && !selectedSize) {
       setSizeError(true)
-      return
+      hasValidationError = true
     }
 
-    const finalColor = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0].name : 'Default')
+    if (product.colors && product.colors.length > 0 && !selectedColor) {
+      setColorError(true)
+      hasValidationError = true
+    }
+
+    if (hasValidationError) return
+
+    const finalColor = selectedColor || 'Default'
     const finalSize = isOneSize ? 'One Size' : selectedSize
 
     addToCart(product, finalSize, finalColor, quantity)
     setAddedSuccess(true)
     setSizeError(false)
+    setColorError(false)
 
     setTimeout(() => {
       setAddedSuccess(false)
@@ -139,6 +198,10 @@ export default function ProductDetailPage() {
       [key]: !prev[key],
     }))
   }
+
+  const images = product.images && product.images.length > 0
+    ? product.images
+    : ['https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85']
 
   return (
     <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-16 text-white">
@@ -163,7 +226,7 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
         {/* Left Column: Product Gallery */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Main Visual Frame with 3D Tilt & Custom Cursor */}
+          {/* Main Visual Frame */}
           <TiltCard
             maxTilt={5}
             glare={true}
@@ -171,7 +234,7 @@ export default function ProductDetailPage() {
           >
             <div data-cursor="view" className="w-full h-full relative">
               <img
-                src={product.images[activeImageIndex] || product.images[0]}
+                src={images[activeImageIndex] || images[0]}
                 alt={`${product.name} angle ${activeImageIndex + 1}`}
                 onError={(e) => {
                   e.target.src = 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
@@ -203,9 +266,9 @@ export default function ProductDetailPage() {
           </TiltCard>
 
           {/* Thumbnail Navigation Row */}
-          {product.images && product.images.length > 1 && (
+          {images.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-2" role="tablist" aria-label="Product image thumbnails">
-              {product.images.map((img, idx) => (
+              {images.map((img, idx) => (
                 <button
                   key={idx}
                   type="button"
@@ -230,74 +293,71 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* Right Column: Garment Information & Purchase Controls */}
-        <div className="lg:col-span-5 space-y-7">
+        {/* Right Column: Product Monograph & Purchasing Controls */}
+        <div className="lg:col-span-5 space-y-8">
           {/* Header & Pricing */}
           <div className="space-y-3 border-b border-white/10 pb-6">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400 font-mono">
-              <span>{product.category} • {product.department}</span>
-              <span className={product.inStock ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>
-                {product.inStock ? 'In Stock • Atelier Ready' : 'Archived / Sold Out'}
-              </span>
+            <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-[#D4AF37] font-mono">
+              <span>{product.department}</span>
+              <span>•</span>
+              <span>{product.category}</span>
             </div>
 
-            <h1 className="editorial-title text-3xl sm:text-4xl lg:text-5xl font-serif text-white tracking-tight">
+            <h1 className="editorial-title text-3xl sm:text-4xl lg:text-5xl font-serif text-white leading-tight">
               {product.name}
             </h1>
 
             {product.subtitle && (
-              <p className="font-serif italic text-base text-gray-300 font-light leading-relaxed">
+              <p className="font-serif italic text-sm text-gray-400 font-light">
                 {product.subtitle}
               </p>
             )}
 
-            <div className="pt-2 flex items-baseline gap-3">
-              <span className="font-serif text-2xl sm:text-3xl font-medium text-white">
+            <div className="flex items-baseline gap-4 pt-2">
+              <span className="font-serif text-2xl sm:text-3xl text-white font-medium">
                 {formatCurrency(product.price)}
               </span>
-              {isDiscounted && (
-                <>
-                  <span className="text-base text-gray-500 line-through font-serif">
-                    {formatCurrency(product.originalPrice)}
-                  </span>
-                  <span className="text-xs font-semibold text-[#D4AF37] glass-panel border-[#D4AF37]/30 px-2 py-0.5 uppercase tracking-wider font-mono">
-                    {`Save ${discountPercent}%`}
-                  </span>
-                </>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="font-serif text-lg text-gray-500 line-through">
+                  {formatCurrency(product.originalPrice)}
+                </span>
               )}
             </div>
           </div>
 
-          {/* Color Swatches */}
+          {/* Color Selector */}
           {product.colors && product.colors.length > 0 && (
             <div className="space-y-2.5">
-              <div className="flex justify-between text-xs tracking-wider uppercase font-mono">
-                <span className="text-gray-400">Selected Hue:</span>
-                <span className="font-semibold text-white">{selectedColor}</span>
+              <div className="flex justify-between items-center text-xs tracking-wider uppercase font-mono">
+                <span className="text-gray-400">Color Palette:</span>
+                <span className="text-[#D4AF37] font-semibold">{selectedColor}</span>
               </div>
-              <div className="flex items-center gap-2.5" role="radiogroup" aria-label="Color tones">
+              <div className="flex gap-2.5">
                 {product.colors.map((c) => (
                   <button
                     key={c.name}
                     type="button"
-                    role="radio"
-                    aria-checked={selectedColor === c.name}
-                    aria-label={`Color: ${c.name}`}
-                    title={c.name}
-                    onClick={() => setSelectedColor(c.name)}
-                    className={`h-8 w-8 rounded-full border-2 transition-all p-0.5 cursor-pointer ${
+                    onClick={() => {
+                      setSelectedColor(c.name)
+                      setColorError(false)
+                    }}
+                    className={`h-9 px-3.5 border transition-all cursor-pointer flex items-center gap-2 text-xs font-mono uppercase tracking-wider ${
                       selectedColor === c.name
-                        ? 'border-[#D4AF37] scale-110 shadow-[0_0_10px_rgba(212,175,55,0.5)]'
-                        : 'border-white/20 hover:scale-105'
+                        ? 'border-[#D4AF37] bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.3)]'
+                        : 'border-white/15 text-gray-300 hover:border-white/40'
                     }`}
                   >
-                    <span
-                      className="block h-full w-full rounded-full border border-black/30"
-                      style={{ backgroundColor: c.hex }}
-                    />
+                    <span>{c.name}</span>
+                    {selectedColor === c.name && <Check size={12} className="text-[#D4AF37]" />}
                   </button>
                 ))}
               </div>
+              {colorError && (
+                <div className="flex items-center gap-1.5 text-xs text-[#E57373] font-medium pt-1 font-mono">
+                  <AlertCircle size={14} />
+                  <span>Please select a color before adding this piece to your bag.</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -346,7 +406,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 {sizeError && (
-                  <div className="flex items-center gap-1.5 text-xs text-[#E57373] font-medium pt-1 animate-in fade-in duration-200 font-mono">
+                  <div className="flex items-center gap-1.5 text-xs text-[#E57373] font-medium pt-1 font-mono">
                     <AlertCircle size={14} />
                     <span>Please select a size before adding this piece to your bag.</span>
                   </div>
@@ -450,179 +510,108 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Accordion Sections with Smooth Motion Reveal */}
+          {/* Accordion Information Sections */}
           <div className="divide-y divide-white/10 text-xs">
-            {/* 1. Design Commentary */}
+            {/* Curatorial Commentary */}
             <div className="py-4">
               <button
                 type="button"
                 onClick={() => toggleAccordion('commentary')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
+                className="w-full flex items-center justify-between text-left font-mono uppercase tracking-wider text-gray-200 hover:text-white cursor-pointer"
               >
-                <span>Design Commentary & Fit</span>
+                <span>Curatorial Commentary</span>
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${openAccordions.commentary ? 'rotate-180' : ''}`}
+                  size={14}
+                  className={`text-gray-400 transition-transform duration-300 ${
+                    openAccordions.commentary ? 'rotate-180' : ''
+                  }`}
                 />
               </button>
-              <AnimatePresence initial={false}>
-                {openAccordions.commentary && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="pt-3 space-y-3 font-serif text-sm leading-relaxed text-gray-300 font-light"
-                  >
-                    <p>{product.description}</p>
-                    {product.details && (
-                      <ul className="space-y-1.5 pt-2 text-xs font-sans text-gray-400">
-                        {product.details.map((detail, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] mt-1.5 shrink-0" />
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {openAccordions.commentary && (
+                <div className="mt-3 text-gray-300 font-serif leading-relaxed space-y-2">
+                  <p>{product.description}</p>
+                </div>
+              )}
             </div>
 
-            {/* 2. Materials & Composition */}
+            {/* Noble Materials & Construction */}
             <div className="py-4">
               <button
                 type="button"
                 onClick={() => toggleAccordion('materials')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
+                className="w-full flex items-center justify-between text-left font-mono uppercase tracking-wider text-gray-200 hover:text-white cursor-pointer"
               >
-                <span>Materials & Fiber Provenance</span>
+                <span>Noble Materials & Construction</span>
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${openAccordions.materials ? 'rotate-180' : ''}`}
+                  size={14}
+                  className={`text-gray-400 transition-transform duration-300 ${
+                    openAccordions.materials ? 'rotate-180' : ''
+                  }`}
                 />
               </button>
-              <AnimatePresence initial={false}>
-                {openAccordions.materials && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
-                  >
-                    <p>
-                      <strong className="text-white block">Material Composition:</strong>
-                      {product.materials || '100% Noble natural fibers.'}
-                    </p>
-                    <p>
-                      <strong className="text-white block mt-2">Provenance:</strong>
-                      Woven in historic partner mills in Northern Italy and Tuscany. Finished without petroleum-based synthetic blends.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {openAccordions.materials && (
+                <div className="mt-3 text-gray-300 font-serif leading-relaxed space-y-2">
+                  <p>{product.materials || 'Constructed from archival grade fibers with hand-finished interior seams.'}</p>
+                </div>
+              )}
             </div>
 
-            {/* 3. Care & Preservation */}
+            {/* Atelier Care */}
             <div className="py-4">
               <button
                 type="button"
                 onClick={() => toggleAccordion('care')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
+                className="w-full flex items-center justify-between text-left font-mono uppercase tracking-wider text-gray-200 hover:text-white cursor-pointer"
               >
-                <span>Preservation & Garment Care</span>
+                <span>Atelier Care</span>
                 <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${openAccordions.care ? 'rotate-180' : ''}`}
+                  size={14}
+                  className={`text-gray-400 transition-transform duration-300 ${
+                    openAccordions.care ? 'rotate-180' : ''
+                  }`}
                 />
               </button>
-              <AnimatePresence initial={false}>
-                {openAccordions.care && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
-                  >
-                    <p>{product.careInstructions || 'Specialist dry clean only. Steam vertical only.'}</p>
-                    <p className="text-[11px] text-gray-400 italic font-serif">
-                      All AUREVA garments include complimentary seam and hardware servicing by our atelier repair team.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* 4. Shipping & Returns */}
-            <div className="py-4">
-              <button
-                type="button"
-                onClick={() => toggleAccordion('shipping')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
-              >
-                <span>Shipping, Duties & Salon Returns</span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${openAccordions.shipping ? 'rotate-180' : ''}`}
-                />
-              </button>
-              <AnimatePresence initial={false}>
-                {openAccordions.shipping && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    animate={{ opacity: 1, height: 'auto', overflow: 'hidden' }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans"
-                  >
-                    <p>
-                      Orders placed before 14:00 CET are dispatched same-day via express insured air courier. Delivery to major metropolitan centers takes 2–4 business days.
-                    </p>
-                    <p>
-                      Complimentary 30-day returns in original archival packaging with all serialized seals intact.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {openAccordions.care && (
+                <div className="mt-3 text-gray-300 font-serif leading-relaxed">
+                  <p>{product.careInstructions || 'Specialist dry clean only. Store on wide cedar hangers away from direct ultraviolet radiation.'}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Related Products */}
+      {/* Related Silhouettes from PostgreSQL Database */}
       {relatedProducts.length > 0 && (
-        <section className="pt-16 border-t border-white/10" aria-label="Complementary wardrobe pieces">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
+        <section className="space-y-8 pt-8 border-t border-white/10">
+          <div className="flex items-center justify-between">
             <div>
-              <span className="tag-overline text-[#D4AF37] font-mono">COMPLEMENTARY REPERTOIRE</span>
-              <h2 className="editorial-title text-3xl sm:text-4xl font-serif text-white mt-1">
-                From The Same Wardrobe
+              <span className="tag-overline text-[#D4AF37] font-mono">HARMONIOUS ENSEMBLE</span>
+              <h2 className="editorial-title text-2xl sm:text-3xl font-serif text-white mt-1">
+                Complementary Pieces
               </h2>
             </div>
             <Link
               to={`/shop?department=${product.department}`}
-              className="text-xs uppercase tracking-[0.2em] text-[#D4AF37] hover:text-white border-b border-[#D4AF37]/50 pb-0.5 transition-colors self-start sm:self-auto font-mono"
+              className="text-xs uppercase tracking-wider text-[#D4AF37] hover:underline font-mono hidden sm:inline"
             >
-              Explore {product.department} Collection →
+              Explore {product.department} &rarr;
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {relatedProducts.map((relProduct) => (
-              <ProductCard key={relProduct.id} product={relProduct} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {relatedProducts.map((rel) => (
+              <ProductCard key={rel.id} product={rel} />
             ))}
           </div>
         </section>
       )}
 
-      {/* Interactive Atelier Size Guide Modal */}
+      {/* Size Chart Modal */}
       <SizeChartModal
         isOpen={sizeGuideOpen}
         onClose={() => setSizeGuideOpen(false)}
-        initialDepartment={product?.department || product?.category || 'Women'}
+        category={product.category}
       />
     </PageTransition>
   )
