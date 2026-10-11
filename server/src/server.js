@@ -26,6 +26,17 @@ async function startServer() {
     }
   })
 
+  // Handle listen errors (such as port already in use)
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ [AUREVA Server Error] Port ${config.port} is already in use by another process.`)
+      console.error(`   To free port ${config.port}, stop the previous server process or update PORT in server/.env.\n`)
+    } else {
+      console.error('❌ [AUREVA Server Error]', err)
+    }
+    process.exit(1)
+  })
+
   // Graceful shutdown handling
   const gracefulShutdown = (signal) => {
     console.log(`\n[Server] Received ${signal}. Closing HTTP server gracefully...`)
