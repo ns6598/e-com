@@ -136,6 +136,116 @@ export const productService = {
       categories: CATEGORIES || ['Coats', 'Tailoring', 'Dresses', 'Knitwear', 'Trousers', 'Leather Goods'],
     }
   },
+
+  /**
+   * Admin: Create new product
+   */
+  async create(productData) {
+    const id = productData.id || `aur-${Date.now().toString(36)}`
+    const productRecord = {
+      ...productData,
+      id,
+      inStock: productData.inStock !== undefined ? productData.inStock : true,
+      stock: productData.stock !== undefined ? parseInt(productData.stock, 10) : 12,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const created = await prisma.product.create({
+          data: {
+            id,
+            name: productRecord.name,
+            subtitle: productRecord.subtitle || null,
+            description: productRecord.description || '',
+            category: productRecord.category || 'Tailoring',
+            department: productRecord.department || 'Women',
+            price: parseFloat(productRecord.price),
+            originalPrice: productRecord.originalPrice ? parseFloat(productRecord.originalPrice) : null,
+            inStock: Boolean(productRecord.inStock),
+            stock: productRecord.stock,
+            isNew: Boolean(productRecord.isNew),
+            isFeatured: Boolean(productRecord.isFeatured),
+            tag: productRecord.tag || null,
+            images: productRecord.images || [],
+            sizes: productRecord.sizes || [],
+            colors: productRecord.colors || [],
+            materials: productRecord.materials || null,
+            careInstructions: productRecord.careInstructions || null,
+            details: productRecord.details || [],
+          },
+        })
+        return { product: created, source: 'database' }
+      } catch (err) {
+        console.warn('[ProductService] Database create fallback:', err.message)
+      }
+    }
+
+    // In-memory catalog update
+    PRODUCTS.unshift(productRecord)
+    return { product: productRecord, source: 'memory_store' }
+  },
+
+  /**
+   * Admin: Update product
+   */
+  async update(id, updates) {
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const updated = await prisma.product.update({
+          where: { id },
+          data: {
+            ...updates,
+            price: updates.price ? parseFloat(updates.price) : undefined,
+            originalPrice: updates.originalPrice ? parseFloat(updates.originalPrice) : undefined,
+            stock: updates.stock !== undefined ? parseInt(updates.stock, 10) : undefined,
+            updatedAt: new Date(),
+          },
+        })
+        return { product: updated, source: 'database' }
+      } catch (err) {
+        console.warn('[ProductService] Database update fallback:', err.message)
+      }
+    }
+
+    const index = PRODUCTS.findIndex((p) => p.id === id)
+    if (index !== -1) {
+      PRODUCTS[index] = {
+        ...PRODUCTS[index],
+        ...updates,
+        price: updates.price !== undefined ? parseFloat(updates.price) : PRODUCTS[index].price,
+        stock: updates.stock !== undefined ? parseInt(updates.stock, 10) : PRODUCTS[index].stock,
+        updatedAt: new Date().toISOString(),
+      }
+      return { product: PRODUCTS[index], source: 'memory_store' }
+    }
+
+    return { product: null }
+  },
+
+  /**
+   * Admin: Delete product
+   */
+  async delete(id) {
+    if (dbStatus.isConnected && prisma) {
+      try {
+        await prisma.product.delete({ where: { id } })
+        return { success: true, source: 'database' }
+      } catch (err) {
+        console.warn('[ProductService] Database delete fallback:', err.message)
+      }
+    }
+
+    const index = PRODUCTS.findIndex((p) => p.id === id)
+    if (index !== -1) {
+      const removed = PRODUCTS.splice(index, 1)[0]
+      return { success: true, product: removed, source: 'memory_store' }
+    }
+
+    return { success: false }
+  },
 }
 
 export default productService
+

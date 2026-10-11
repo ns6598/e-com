@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles, Ruler } from 'lucide-react'
+import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles, Ruler, User } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
+import { useAuth } from '../../context/AuthContext'
 import WishlistDrawer from '../wishlist/WishlistDrawer'
 import SizeChartModal from '../common/SizeChartModal'
+
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -22,8 +24,10 @@ export default function Header() {
 
   const { openCart, totalItems, cartBounced } = useCart()
   const { totalWishlist } = useWishlist()
+  const { user, isAuthenticated, isAdmin } = useAuth()
 
   const isHomePage = location.pathname === '/'
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -213,6 +217,23 @@ export default function Header() {
                 )}
               </button>
 
+              {/* Patron Account / Sign In Link */}
+              <Link
+                to={isAuthenticated ? '/account' : '/login'}
+                aria-label={isAuthenticated ? `Patron Account: ${user?.name}` : 'Sign In to Patron Account'}
+                className="p-2 text-gray-300 hover:text-[#D4AF37] transition-colors cursor-pointer relative flex items-center"
+                title={isAuthenticated ? `Dossier: ${user?.name}` : 'Patron Sign In'}
+              >
+                {isAuthenticated ? (
+                  <span className="h-6 w-6 rounded-full border border-[#D4AF37] gold-gradient-bg text-[#08090D] font-bold text-[10px] flex items-center justify-center font-mono shadow-xs">
+                    {(user?.name || user?.email || 'A')[0].toUpperCase()}
+                  </span>
+                ) : (
+                  <User size={18} />
+                )}
+              </Link>
+
+
               {/* Shopping Bag Button with Live Motion Bounce */}
               <motion.button
                 type="button"
@@ -319,7 +340,30 @@ export default function Header() {
                 <span>Size Chart & Guide</span>
                 <Ruler size={18} className="text-[#D4AF37]" />
               </button>
+
+              <Link
+                to={isAuthenticated ? '/account' : '/login'}
+                onClick={() => setMobileMenuOpen(false)}
+                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between pt-2 border-t border-white/10"
+              >
+                <span>{isAuthenticated ? 'Patron Dossier' : 'Patron Sign In'}</span>
+                <User size={18} className="text-[#D4AF37]" />
+              </Link>
+
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="font-serif text-2xl tracking-wide text-[#D4AF37] hover:text-white transition-colors flex items-center justify-between"
+                >
+                  <span>Atelier Admin Console</span>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 border border-[#D4AF37]">
+                    Curator
+                  </span>
+                </Link>
+              )}
             </nav>
+
 
             <div className="pt-6 border-t border-white/10 flex flex-col space-y-2 text-[11px] tracking-widest uppercase text-gray-400 font-mono">
               <p>Curated in Paris & Tokyo</p>

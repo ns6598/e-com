@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Filter, Search, X, SlidersHorizontal, ChevronRight, RotateCcw, Check, ArrowUpDown, Sparkles } from 'lucide-react'
+import { Filter, Search, X, SlidersHorizontal, ChevronRight, ChevronLeft, RotateCcw, Check, ArrowUpDown, Sparkles } from 'lucide-react'
 import { PRODUCTS, DEPARTMENTS, CATEGORIES, SIZES, COLORS } from '../data/products'
+import productService from '../services/productService'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import Button from '../components/ui/Button'
@@ -12,6 +13,21 @@ import FadeInView from '../components/motion/FadeInView'
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Live products list from backend with fallback
+  const [catalogItems, setCatalogItems] = useState(PRODUCTS)
+
+  useEffect(() => {
+    let isMounted = true
+    productService.getAll().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        setCatalogItems(data)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Extract URL parameters
   const initialDepartment = searchParams.get('department') || 'All'
@@ -24,9 +40,15 @@ export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [selectedSize, setSelectedSize] = useState('All')
   const [selectedColor, setSelectedColor] = useState('All')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 9
+
   // Calculate dynamic catalog price bounds
-  const minCatalogPrice = useMemo(() => Math.min(...PRODUCTS.map((p) => p.price)), [])
-  const maxCatalogPrice = useMemo(() => Math.max(...PRODUCTS.map((p) => p.price)), [])
+  const minCatalogPrice = useMemo(() => Math.min(...catalogItems.map((p) => p.price || 0)), [catalogItems])
+  const maxCatalogPrice = useMemo(() => Math.max(...catalogItems.map((p) => p.price || 0)), [catalogItems])
+
 
   const [priceRange, setPriceRange] = useState(maxCatalogPrice)
   const [saleOnly, setSaleOnly] = useState(initialFilter === 'sale')
@@ -65,7 +87,7 @@ export default function ShopPage() {
 
   // Filtered and Sorted Products
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((item) => {
+    return catalogItems.filter((item) => {
       // 1. Department Filter
       if (selectedDepartment !== 'All') {
         if (item.department.toLowerCase() !== selectedDepartment.toLowerCase()) {
@@ -77,7 +99,7 @@ export default function ShopPage() {
       if (selectedCategory !== 'All') {
         const catMatch =
           item.category.toLowerCase() === selectedCategory.toLowerCase() ||
-          item.subcategory.toLowerCase() === selectedCategory.toLowerCase()
+          item.subcategory?.toLowerCase() === selectedCategory.toLowerCase()
         if (!catMatch) return false
       }
 
@@ -118,9 +140,9 @@ export default function ShopPage() {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const matchesName = item.name.toLowerCase().includes(q)
-        const matchesCat = item.category.toLowerCase().includes(q) || item.subcategory.toLowerCase().includes(q)
+        const matchesCat = item.category.toLowerCase().includes(q) || item.subcategory?.toLowerCase().includes(q)
         const matchesDept = item.department.toLowerCase().includes(q)
-        const matchesDesc = item.description.toLowerCase().includes(q)
+        const matchesDesc = item.description?.toLowerCase().includes(q)
         const matchesMat = item.materials && item.materials.toLowerCase().includes(q)
         const matchesCol = item.collection && item.collection.toLowerCase().includes(q)
 
@@ -138,6 +160,7 @@ export default function ShopPage() {
       return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
     })
   }, [
+    catalogItems,
     selectedDepartment,
     selectedCategory,
     selectedSize,
@@ -148,6 +171,29 @@ export default function ShopPage() {
     searchQuery,
     sortBy,
   ])
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredProducts.slice(start, start + itemsPerPage)
+  }, [filteredProducts, currentPage, itemsPerPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [
+    selectedDepartment,
+    selectedCategory,
+    selectedSize,
+    selectedColor,
+    priceRange,
+    saleOnly,
+    newOnly,
+    searchQuery,
+    sortBy,
+  ])
+
 
   // Active filters list
   const activeFilters = useMemo(() => {
@@ -537,23 +583,81 @@ export default function ShopPage() {
             </div>
           ) : (
             /* Product Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product, idx) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.3) }}
-                >
-                  <ProductCard
-                    product={product}
-                    onQuickView={(p) => setQuickViewProduct(p)}
-                  />
-                </motion.div>
-              ))}
+            <div className="space-y-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedProducts.map((product, idx) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: Math.min(idx * 0.04, 0.3) }}
+                  >
+                    <ProductCard
+                      product={product}
+                      onQuickView={(p) => setQuickViewProduct(p)}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Luxury Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <span className="text-xs font-mono text-gray-400">
+                    Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} Silhouettes
+                  </span>
+
+                  <div className="flex items-center gap-1.5 font-mono text-xs">
+                    <button
+                      type="button"
+                      disabled={currentPage === 1}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.max(1, p - 1))
+                        window.scrollTo({ top: 300, behavior: 'smooth' })
+                      }}
+                      className="px-3 py-2 border border-white/15 disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <ChevronLeft size={14} />
+                      <span className="hidden sm:inline">Prev</span>
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => {
+                          setCurrentPage(page)
+                          window.scrollTo({ top: 300, behavior: 'smooth' })
+                        }}
+                        className={`h-9 w-9 border transition-all cursor-pointer flex items-center justify-center font-bold ${
+                          currentPage === page
+                            ? 'gold-gradient-bg text-[#08090D] border-[#D4AF37]'
+                            : 'border-white/15 text-gray-300 hover:border-white/40'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      disabled={currentPage === totalPages}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        window.scrollTo({ top: 300, behavior: 'smooth' })
+                      }}
+                      className="px-3 py-2 border border-white/15 disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
+
       </div>
 
       {/* Slide-in Filter Drawer on Mobile with Framer Motion */}

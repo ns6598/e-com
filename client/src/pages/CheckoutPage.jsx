@@ -10,6 +10,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
+import api from '../services/api'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
@@ -23,9 +25,12 @@ export default function CheckoutPage() {
     appliedCoupon,
     grandTotal,
     createDemoOrder,
+    clearCart,
   } = useCart()
 
+  const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+
 
   // Form State
   const [formData, setFormData] = useState({
@@ -98,7 +103,23 @@ export default function CheckoutPage() {
     setErrors((prev) => ({ ...prev, [name]: errorMsg }))
   }
 
-  const handleSubmitOrder = (e) => {
+  // Pre-fill coordinates if authenticated patron
+  React.useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || user.name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+        address: prev.address || user.address || '',
+        city: prev.city || user.city || '',
+        state: prev.state || user.state || '',
+        postalCode: prev.postalCode || user.postalCode || '',
+      }))
+    }
+  }, [user])
+
+  const handleSubmitOrder = async (e) => {
     e.preventDefault()
 
     const newErrors = {}
@@ -138,22 +159,66 @@ export default function CheckoutPage() {
 
     setIsSubmitting(true)
 
-    setTimeout(() => {
-      const createdOrder = createDemoOrder({
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        postalCode: formData.postalCode.trim(),
-        paymentMethod: formData.demoPaymentMethod,
-      })
+    const orderPayload = {
+      customerName: formData.fullName.trim(),
+      customerEmail: formData.email.trim(),
+      customerPhone: formData.phone.trim(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim(),
+      postalCode: formData.postalCode.trim(),
+      items: cart.map((i) => ({
+        productId: i.id,
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity,
+        size: i.selectedSize || null,
+        color: i.selectedColor || null,
+        image: i.images?.[0] || null,
+      })),
+      subtotal,
+      shipping,
+      discount,
+      paymentMethod: formData.demoPaymentMethod,
+    }
 
-      setIsSubmitting(false)
-      navigate('/order-confirmation', { state: { order: createdOrder } })
-    }, 600)
+    try {
+      const res = await api.post('/orders', orderPayload)
+      if (res.success && res.data) {
+        clearCart()
+        try {
+          const localOrders = JSON.parse(localStorage.getItem('aureva_orders') || '[]')
+          localStorage.setItem('aureva_orders', JSON.stringify([res.data, ...localOrders]))
+        } catch {
+          // Local storage handled
+        }
+
+        setIsSubmitting(false)
+        navigate(`/order-confirmation/${res.data.orderNumber || res.data.id}`, {
+          state: { order: res.data },
+        })
+        return
+      }
+    } catch (err) {
+      console.warn('[Checkout] API submission fallback:', err)
+    }
+
+    // Resilient offline fallback
+    const createdOrder = createDemoOrder({
+      fullName: formData.fullName.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim(),
+      postalCode: formData.postalCode.trim(),
+      paymentMethod: formData.demoPaymentMethod,
+    })
+
+    setIsSubmitting(false)
+    navigate('/order-confirmation', { state: { order: createdOrder } })
   }
+
 
   if (cart.length === 0 && !isSubmitting) {
     return (

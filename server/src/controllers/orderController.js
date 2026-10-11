@@ -144,3 +144,126 @@ export async function getOrderById(req, res, next) {
     next(error)
   }
 }
+
+/**
+ * List orders
+ * Endpoint: GET /api/orders
+ * If admin: lists all atelier orders
+ * If customer: lists orders for current user
+ */
+export async function listOrders(req, res, next) {
+  try {
+    const user = req.user
+    const isAdmin = user.role === 'ADMIN'
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const where = isAdmin
+          ? {}
+          : {
+              OR: [
+                { userId: user.id },
+                { customerEmail: { equals: user.email, mode: 'insensitive' } },
+              ],
+            }
+
+        const orders = await prisma.order.findMany({
+          where,
+          include: { items: true },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        return successResponse(res, {
+          message: `Retrieved ${orders.length} order records`,
+          data: orders,
+        })
+      } catch (err) {
+        console.warn('[Orders Controller] Database query fallback:', err.message)
+      }
+    }
+
+    // In-memory orders filter
+    const allOrders = Array.from(mockOrders.values()).filter(
+      (order, index, self) => self.findIndex((o) => o.orderNumber === order.orderNumber) === index
+    )
+
+    const filtered = isAdmin
+      ? allOrders
+      : allOrders.filter(
+          (o) =>
+            o.userId === user.id ||
+            (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase())
+        )
+
+    return successResponse(res, {
+      message: `Retrieved ${filtered.length} order acquisitions`,
+      data: filtered,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Admin: Update order status
+ * Endpoint: PATCH /api/orders/:id/status
+ */
+export async function updateOrderStatus(req, res, next) {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+
+    const validStatuses = ['PENDING', 'PROCESSING', 'DISPATCHED', 'DELIVERED', 'CANCELLED']
+    if (!validStatuses.includes(status)) {
+      return errorResponse(res, {
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        code: 'INVALID_STATUS',
+        statusCode: 400,
+      })
+    }
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const updated = await prisma.order.update({
+          where: { id },
+          data: { status },
+          include: { items: true },
+        })
+
+        return successResponse(res, {
+          message: `Order status upgraded to ${status}`,
+          data: updated,
+        })
+      } catch (err) {
+        console.warn('[Orders Controller] Database update fallback:', err.message)
+      }
+    }
+
+    let order = mockOrders.get(id)
+    if (!order) {
+      // Try finding by orderNumber
+      order = Array.from(mockOrders.values()).find((o) => o.id === id || o.orderNumber === id)
+    }
+
+    if (!order) {
+      return errorResponse(res, {
+        message: `Order reference '${id}' not found`,
+        code: 'ORDER_NOT_FOUND',
+        statusCode: 404,
+      })
+    }
+
+    order.status = status
+    order.updatedAt = new Date().toISOString()
+    mockOrders.set(order.id, order)
+    mockOrders.set(order.orderNumber, order)
+
+    return successResponse(res, {
+      message: `Order status modified to ${status}`,
+      data: order,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

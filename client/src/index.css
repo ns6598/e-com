@@ -1,12 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-noir-950: #06070A;
-  --color-noir-900: #0A0C12;
-  --color-noir-850: #10131B;
-  --color-noir-800: #161A26;
-  --color-noir-700: #222738;
-  --color-noir-600: #333B50;
+  --color-ivory: #F6F2EA;
+  --color-ivory-warm: #FAF8F5;
+  --color-ivory-muted: #EFEAE1;
+
+  --color-near-black: #171717;
+  --color-near-black-950: #0E0E0E;
+  --color-near-black-900: #121212;
+  --color-near-black-800: #1A1A1A;
+  --color-near-black-700: #242424;
+  --color-near-black-600: #333333;
+
+  --color-oxblood: #6D202D;
+  --color-oxblood-light: #8B2C3B;
+  --color-oxblood-dark: #4A141D;
+
+  --color-warm-neutral: #EAE6DF;
+  --color-warm-stone: #C8C2B8;
+  --color-warm-sand: #DCD6CD;
+  --color-warm-border: rgba(246, 242, 234, 0.14);
+
+  --color-noir-950: #0E0E0E;
+  --color-noir-900: #121212;
+  --color-noir-850: #171717;
+  --color-noir-800: #1F1F1F;
+  --color-noir-700: #2A2A2A;
+  --color-noir-600: #383838;
 
   --color-gold-200: #FFF3CC;
   --color-gold-300: #F6E2A0;
@@ -14,10 +34,6 @@
   --color-gold-500: #D4AF37;
   --color-gold-600: #B89326;
   --color-gold-700: #8E6E16;
-
-  --color-oxblood: #7E1828;
-  --color-oxblood-light: #A3283E;
-  --color-oxblood-dark: #550F1A;
 
   --color-platinum: #FFFFFF;
   --color-platinum-muted: #E2E5EB;
@@ -28,6 +44,7 @@
   --font-display: 'Italiana', 'Cormorant Garamond', serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
 
 /* Custom Base Typography, Dark Runway Aesthetics & Scrollbars */
 @layer base {

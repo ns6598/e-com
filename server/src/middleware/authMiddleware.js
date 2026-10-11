@@ -47,3 +47,27 @@ export function optionalAuth(req, res, next) {
 
   next()
 }
+
+/**
+ * Admin authorization middleware:
+ * Requires authenticated user with role === 'ADMIN'.
+ */
+export function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return errorResponse(res, {
+      message: 'Authentication required before accessing atelier management resources.',
+      code: 'UNAUTHORIZED',
+      statusCode: 401,
+    })
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    return errorResponse(res, {
+      message: 'Elevated curator privileges required for this administrative operation.',
+      code: 'FORBIDDEN',
+      statusCode: 403,
+    })
+  }
+
+  next()
+}

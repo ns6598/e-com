@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { PRODUCTS } from '../data/products'
+import productService from '../services/productService'
 import { formatCurrency, calculateDiscountPercentage } from '../utils/formatters'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
@@ -30,8 +31,20 @@ export default function ProductDetailPage() {
   const { addToCart, openCart } = useCart()
   const { isInWishlist, toggleWishlist } = useWishlist()
 
-  // Find product from centralized catalog
-  const product = PRODUCTS.find((p) => p.id === id)
+  // Find product from centralized catalog with live backend fetch
+  const [product, setProduct] = useState(() => PRODUCTS.find((p) => p.id === id) || null)
+
+  useEffect(() => {
+    let isMounted = true
+    productService.getById(id).then((found) => {
+      if (isMounted && found) {
+        setProduct(found)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [id])
 
   // Local state
   const [activeImageIndex, setActiveImageIndex] = useState(0)
@@ -65,6 +78,7 @@ export default function ProductDetailPage() {
       setAddedSuccess(false)
     }
   }, [product, id])
+
 
   // Handle Missing Product Route gracefully
   if (!product) {

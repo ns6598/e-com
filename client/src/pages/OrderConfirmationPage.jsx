@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useLocation, useParams, Link } from 'react-router-dom'
 import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer, Sparkles } from 'lucide-react'
+import api from '../services/api'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
@@ -9,16 +10,17 @@ export default function OrderConfirmationPage() {
   const location = useLocation()
   const { orderId } = useParams()
 
-  const [order] = useState(() => {
+  const [order, setOrder] = useState(() => {
     if (location.state && location.state.order) {
       return location.state.order
     }
     try {
-      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('aureva_last_order_v1') : null
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('aureva_orders') : null
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (!orderId || parsed.orderNumber === orderId) {
-          return parsed
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!orderId) return parsed[0]
+          return parsed.find((o) => o.orderNumber === orderId || o.id === orderId) || parsed[0]
         }
       }
     } catch (e) {
@@ -26,6 +28,19 @@ export default function OrderConfirmationPage() {
     }
     return null
   })
+
+  // Attempt live lookup from API if needed
+  useEffect(() => {
+    if (orderId && (!order || (order.orderNumber !== orderId && order.id !== orderId))) {
+      api.get(`/orders/${orderId}`)
+        .then((res) => {
+          if (res.success && res.data) {
+            setOrder(res.data)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [orderId, order])
 
   if (!order) {
     return (
@@ -49,15 +64,40 @@ export default function OrderConfirmationPage() {
     )
   }
 
-  const { orderNumber, createdAt, customer, items, summary } = order
+  // Normalized order variables
+  const orderNumber = order.orderNumber || order.id
+  const customerName = order.customerName || order.customer?.fullName || order.customer?.name || 'Patron'
+  const customerEmail = order.customerEmail || order.customer?.email || 'patron@aureva-studios.demo'
+  const customerPhone = order.customerPhone || order.customer?.phone || ''
+  const shippingAddress = order.shippingAddress?.address || order.customer?.address || order.address || 'Atelier Delivery'
+  const shippingCity = order.shippingAddress?.city || order.customer?.city || order.city || 'Paris'
+  const shippingState = order.shippingAddress?.state || order.customer?.state || order.state || ''
+  const shippingPostalCode = order.shippingAddress?.postalCode || order.customer?.postalCode || order.postalCode || ''
 
-  const formattedDate = new Date(createdAt).toLocaleDateString('en-IN', {
+  const rawItems = order.items || []
+  const normalizedItems = rawItems.map((item) => ({
+    name: item.name || item.product?.name || 'Monograph Silhouette',
+    image: item.image || item.product?.images?.[0] || '',
+    size: item.size || 'One Size',
+    color: item.color || '',
+    quantity: item.quantity || 1,
+    price: item.price || 0,
+  }))
+
+  const subtotal = order.subtotal !== undefined ? order.subtotal : order.summary?.subtotal || 0
+  const shipping = order.shipping !== undefined ? order.shipping : order.summary?.shipping || 0
+  const discount = order.discount !== undefined ? order.discount : order.summary?.discount || 0
+  const total = order.total !== undefined ? order.total : order.summary?.grandTotal || subtotal + shipping - discount
+  const totalItemsCount = normalizedItems.reduce((acc, i) => acc + i.quantity, 0)
+
+  const formattedDate = new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   })
+
 
   return (
     <PageTransition className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12 text-white">
@@ -117,25 +157,28 @@ export default function OrderConfirmationPage() {
         {/* Left Column: Customer & Shipping Summary */}
         <div className="md:col-span-5 space-y-6">
           {/* Shipping Address */}
+          {/* Shipping Address */}
           <div className="glass-panel p-6 space-y-3 text-xs rounded-xs border-white/10">
             <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
               Delivery Destination
             </h3>
             <div className="space-y-1.5 text-gray-300">
-              <p className="font-semibold text-sm text-white">{customer.fullName}</p>
-              <p>{customer.address}</p>
-              <p>{customer.city}, {customer.state} — {customer.postalCode}</p>
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">India</p>
+              <p className="font-semibold text-sm text-white">{customerName}</p>
+              <p>{shippingAddress}</p>
+              <p>{shippingCity}, {shippingState} — {shippingPostalCode}</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Bespoke Courier</p>
             </div>
             <div className="pt-3 border-t border-white/10 space-y-1 text-gray-400 font-mono">
               <p className="flex items-center gap-2">
                 <Mail size={13} className="text-[#D4AF37]" />
-                <span>{customer.email}</span>
+                <span>{customerEmail}</span>
               </p>
-              <p className="flex items-center gap-2">
-                <Phone size={13} className="text-[#D4AF37]" />
-                <span>+91 {customer.phone}</span>
-              </p>
+              {customerPhone && (
+                <p className="flex items-center gap-2">
+                  <Phone size={13} className="text-[#D4AF37]" />
+                  <span>{customerPhone}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -155,34 +198,40 @@ export default function OrderConfirmationPage() {
         <div className="md:col-span-7 space-y-6">
           <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 space-y-6 rounded-xs border border-white/15">
             <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
-              Allocated Pieces ({summary.totalItems})
+              Allocated Pieces ({totalItemsCount})
             </h3>
 
             {/* Items List */}
             <div className="divide-y divide-white/10">
-              {items.map((item, idx) => (
+              {normalizedItems.map((item, idx) => (
                 <div key={idx} className="py-4 flex gap-4 items-center">
                   <div className="w-16 h-20 bg-[#121522] border border-white/10 overflow-hidden shrink-0">
-                    <img
-                      src={item.product.images ? item.product.images[0] : ''}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover object-top"
-                    />
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-600">
+                        <ShoppingBag size={20} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-serif text-base text-white truncate">
-                      {item.product.name}
+                      {item.name}
                     </h4>
                     <p className="text-[11px] text-gray-400 font-mono">
-                      Size: {item.size} • Color: {item.color} • Qty: {item.quantity}
+                      {item.size && `Size: ${item.size}`}{item.color && ` • Color: ${item.color}`} • Qty: {item.quantity}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <span className="font-serif text-sm font-semibold text-white block">
-                      {formatCurrency(item.product.price * item.quantity)}
+                      {formatCurrency(item.price * item.quantity)}
                     </span>
                     <span className="text-[10px] text-gray-500 font-mono">
-                      {formatCurrency(item.product.price)} each
+                      {formatCurrency(item.price)} each
                     </span>
                   </div>
                 </div>
@@ -193,35 +242,36 @@ export default function OrderConfirmationPage() {
             <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
               <div className="flex justify-between">
                 <span>Merchandise Subtotal</span>
-                <span className="font-serif text-base font-semibold text-white">{formatCurrency(summary.subtotal)}</span>
+                <span className="font-serif text-base font-semibold text-white">{formatCurrency(subtotal)}</span>
               </div>
 
-              {summary.discount > 0 && (
+              {discount > 0 && (
                 <div className="flex justify-between text-[#D4AF37] font-medium font-mono">
-                  <span>Privilege Savings ({summary.couponCode})</span>
-                  <span>-{formatCurrency(summary.discount)}</span>
+                  <span>Privilege Savings</span>
+                  <span>-{formatCurrency(discount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span>White-Glove Courier Delivery</span>
                 <span className="font-mono text-xs">
-                  {summary.shipping === 0 ? (
+                  {shipping === 0 ? (
                     <span className="text-emerald-400 font-semibold uppercase text-[11px]">Complimentary</span>
                   ) : (
-                    formatCurrency(summary.shipping)
+                    formatCurrency(shipping)
                   )}
                 </span>
               </div>
 
               <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-base font-semibold text-white">
                 <span>Total Authorized</span>
-                <span className="font-serif text-2xl text-white">{formatCurrency(summary.grandTotal)}</span>
+                <span className="font-serif text-2xl text-white">{formatCurrency(total)}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
 
       {/* Action Buttons */}
       <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">

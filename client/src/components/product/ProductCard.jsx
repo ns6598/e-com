@@ -106,7 +106,7 @@ export default function ProductCard({ product, showQuickAdd = true, onQuickView 
             {/* Badges: Accurate Sale % or Tag */}
             <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
               {discountPercent > 0 && (
-                <span className="inline-block bg-[#7E1828] text-white text-[9px] uppercase tracking-[0.2em] font-semibold px-2 py-0.5 shadow-md">
+                <span className="inline-block bg-[#6D202D] text-white text-[9px] uppercase tracking-[0.2em] font-semibold px-2 py-0.5 shadow-md border border-[#8B2C3B]/50">
                   -{discountPercent}% OFF
                 </span>
               )}
@@ -116,6 +116,7 @@ export default function ProductCard({ product, showQuickAdd = true, onQuickView 
                 </span>
               )}
             </div>
+
 
             {/* Quick Action Buttons (Wishlist & Quick View) */}
             <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
