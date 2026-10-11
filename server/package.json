@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "test:db": "node scripts/testDatabase.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

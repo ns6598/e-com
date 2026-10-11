@@ -6,6 +6,8 @@ import orderRoutes from './orderRoutes.js'
 import couponRoutes from './couponRoutes.js'
 import newsletterRoutes from './newsletterRoutes.js'
 import contactRoutes from './contactRoutes.js'
+import cartRoutes from './cartRoutes.js'
+import wishlistRoutes from './wishlistRoutes.js'
 import { successResponse } from '../utils/response.js'
 
 const apiRouter = Router()
@@ -49,6 +51,21 @@ apiRouter.get('/', (req, res) => {
             byId: { path: '/api/orders/:id', method: 'GET' },
           },
         },
+        cart: {
+          path: '/api/cart',
+          subpaths: {
+            get: { path: '/api/cart', method: 'GET' },
+            add: { path: '/api/cart/items', method: 'POST' },
+            remove: { path: '/api/cart/items/:itemId', method: 'DELETE' },
+          },
+        },
+        wishlist: {
+          path: '/api/wishlist',
+          subpaths: {
+            get: { path: '/api/wishlist', method: 'GET' },
+            toggle: { path: '/api/wishlist/toggle', method: 'POST' },
+          },
+        },
         coupons: {
           path: '/api/coupons',
           subpaths: {
@@ -77,6 +94,8 @@ apiRouter.use('/health', healthRoutes)
 apiRouter.use('/products', productRoutes)
 apiRouter.use('/auth', authRoutes)
 apiRouter.use('/orders', orderRoutes)
+apiRouter.use('/cart', cartRoutes)
+apiRouter.use('/wishlist', wishlistRoutes)
 apiRouter.use('/coupons', couponRoutes)
 apiRouter.use('/newsletter', newsletterRoutes)
 apiRouter.use('/contact', contactRoutes)
