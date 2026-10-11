@@ -2,8 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 /**
- * Editorial Luxury Button Component
- * Pure geometric precision, zero generic rounded pill styling, high tactile feedback
+ * Neo-Luxury Liquid Glass Button Component
+ * Architectural cuts, gold gradient shimmer, frosted glass borders & tactile micro-feedback
  */
 export default function Button({
   children,
@@ -20,21 +20,22 @@ export default function Button({
   iconPosition = 'right',
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-sans tracking-[0.18em] uppercase transition-all duration-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6D202D] focus-visible:ring-offset-2'
+  const baseStyles = 'inline-flex items-center justify-center font-sans tracking-[0.2em] uppercase transition-all duration-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090D]'
 
   const sizeStyles = {
     sm: 'text-[10px] px-4 py-2.5 gap-2',
-    md: 'text-xs px-7 py-3.5 gap-2.5',
-    lg: 'text-xs px-9 py-4 gap-3 font-semibold',
+    md: 'text-xs px-6 py-3.5 gap-2.5 font-medium',
+    lg: 'text-xs px-8 py-4 gap-3 font-semibold',
   }
 
   const variantStyles = {
-    primary: 'bg-[#171717] text-[#F6F2EA] border border-[#171717] hover:bg-[#6D202D] hover:border-[#6D202D] hover:text-[#FFFFFF] active:bg-[#501620]',
-    secondary: 'bg-transparent text-[#171717] border border-[#171717] hover:bg-[#171717] hover:text-[#F6F2EA] active:bg-[#2B2B2B]',
-    oxblood: 'bg-[#6D202D] text-[#FFFFFF] border border-[#6D202D] hover:bg-[#171717] hover:border-[#171717] hover:text-[#F6F2EA] active:bg-[#501620]',
-    stone: 'bg-[#D8D0C4] text-[#171717] border border-[#D8D0C4] hover:bg-[#171717] hover:border-[#171717] hover:text-[#F6F2EA]',
-    text: 'bg-transparent text-[#171717] border-b border-[#171717] hover:border-[#6D202D] hover:text-[#6D202D] px-0 py-1 rounded-none tracking-[0.2em] gap-2',
-    ghost: 'bg-transparent text-[#171717] hover:bg-[#171717]/5 active:bg-[#171717]/10',
+    primary: 'gold-gradient-bg text-[#08090D] font-bold border border-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] hover:scale-[1.01] active:scale-[0.99]',
+    secondary: 'glass-panel text-white border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37] hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] active:scale-[0.99]',
+    oxblood: 'bg-[#7E1828] text-white border border-[#A3283E]/50 hover:bg-[#A3283E] hover:shadow-[0_0_20px_rgba(163,40,62,0.35)] active:scale-[0.99]',
+    glass: 'glass-panel-gold text-white border-[#D4AF37]/40 hover:border-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.3)]',
+    stone: 'bg-white/10 text-white border border-white/20 hover:border-[#D4AF37] hover:text-[#D4AF37]',
+    text: 'bg-transparent text-[#D4AF37] border-b border-[#D4AF37]/40 hover:border-[#D4AF37] hover:text-white px-0 py-1 rounded-none tracking-[0.22em] gap-2',
+    ghost: 'bg-transparent text-gray-300 hover:text-white hover:bg-white/5 active:bg-white/10',
   }
 
   const widthStyle = fullWidth ? 'w-full' : ''
@@ -67,8 +68,8 @@ export default function Button({
   return (
     <button
       type={type}
-      disabled={disabled}
       onClick={onClick}
+      disabled={disabled}
       className={`group ${combinedClasses}`}
       {...props}
     >

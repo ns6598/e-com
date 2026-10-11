@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ShoppingBag,
   Tag,
+  Sparkles,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { formatCurrency } from '../utils/formatters'
@@ -56,7 +57,6 @@ export default function CheckoutPage() {
         return ''
       case 'phone':
         if (!val) return 'Phone number is required for courier dispatch.'
-        // Sensible 10-digit Indian phone or international mobile format
         const cleanPhone = val.replace(/\D/g, '')
         if (cleanPhone.length < 10) return 'Please provide a valid 10-digit contact number.'
         return ''
@@ -84,7 +84,6 @@ export default function CheckoutPage() {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
 
-    // If field was touched, validate dynamically
     if (touched[name]) {
       const errorMsg = validateField(name, value)
       setErrors((prev) => ({ ...prev, [name]: errorMsg }))
@@ -101,7 +100,6 @@ export default function CheckoutPage() {
   const handleSubmitOrder = (e) => {
     e.preventDefault()
 
-    // Validate all fields
     const newErrors = {}
     const fieldsToValidate = ['fullName', 'email', 'phone', 'address', 'city', 'state', 'postalCode']
     let hasError = false
@@ -126,7 +124,6 @@ export default function CheckoutPage() {
     setErrors(newErrors)
 
     if (hasError) {
-      // Scroll to the first error
       const firstErrorEl = document.querySelector('.checkout-error')
       if (firstErrorEl) {
         firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -138,10 +135,8 @@ export default function CheckoutPage() {
       return
     }
 
-    // Prevent duplicate accidental clicks
     setIsSubmitting(true)
 
-    // Simulate realistic instantaneous atelier authorization
     setTimeout(() => {
       const createdOrder = createDemoOrder({
         fullName: formData.fullName.trim(),
@@ -159,18 +154,17 @@ export default function CheckoutPage() {
     }, 600)
   }
 
-  // If bag is empty and no checkout in progress
   if (cart.length === 0 && !isSubmitting) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32 text-center space-y-6">
-        <div className="inline-flex p-4 rounded-full bg-[#171717]/5 mb-2">
-          <ShoppingBag size={48} className="text-[#171717]/40 stroke-[1.2]" />
+      <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32 text-center space-y-6 text-white">
+        <div className="inline-flex p-4 rounded-full glass-panel mb-2">
+          <ShoppingBag size={48} className="text-gray-500 stroke-[1.2]" />
         </div>
-        <span className="tag-overline text-[#6D202D] block">NO ACTIVE SELECTION</span>
-        <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-[#171717]">
+        <span className="tag-overline text-[#D4AF37] block font-mono">NO ACTIVE SELECTION</span>
+        <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-white">
           Your Shopping Bag is Empty
         </h1>
-        <p className="text-xs text-[#171717]/60 tracking-wider max-w-sm mx-auto leading-relaxed">
+        <p className="text-xs text-gray-400 tracking-wider max-w-sm mx-auto leading-relaxed font-mono">
           Please select pieces from our catalog before proceeding to order finalization.
         </p>
         <div className="pt-4">
@@ -183,29 +177,29 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10 text-white">
       {/* Editorial Page Header */}
-      <div className="border-b border-[#171717]/15 pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="tag-overline text-[#6D202D]">CONCIERGE CHECKOUT</span>
-          <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-[#171717] mt-1">
+          <span className="tag-overline text-[#D4AF37] font-mono">CONCIERGE CHECKOUT</span>
+          <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-white mt-1">
             Order Finalization
           </h1>
         </div>
-        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#171717]/60 font-mono">
-          <Lock size={14} className="text-[#6D202D]" />
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D4AF37] font-mono">
+          <Lock size={14} />
           <span>Atelier Secure Protocol</span>
         </div>
       </div>
 
-      {/* Demonstration Disclaimer Alert */}
-      <div className="bg-[#FAF8F5] border border-[#171717]/20 p-4 sm:p-5 text-xs text-[#171717] flex items-start gap-3">
-        <ShieldCheck size={20} className="text-[#6D202D] shrink-0 mt-0.5" />
+      {/* Demonstration Disclaimer Alert in Liquid Glass */}
+      <div className="glass-panel p-4 sm:p-5 text-xs text-white flex items-start gap-3 rounded-xs border-white/10">
+        <ShieldCheck size={20} className="text-[#D4AF37] shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold uppercase tracking-wider text-[11px]">
+          <p className="font-semibold uppercase tracking-wider text-[11px] font-mono text-[#D4AF37]">
             Frontend Demonstration Checkout
           </p>
-          <p className="text-[11px] text-[#171717]/70 leading-relaxed font-sans">
+          <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
             This application is an editorial portfolio demo. No real payment card details will be requested or processed, and no real fulfillment order will be dispatched.
           </p>
         </div>
@@ -216,14 +210,14 @@ export default function CheckoutPage() {
         <form onSubmit={handleSubmitOrder} noValidate className="lg:col-span-7 space-y-8">
           {/* Section 1: Customer Contact Info */}
           <div className="space-y-4">
-            <h2 className="font-serif text-2xl text-[#171717] border-b border-[#171717]/15 pb-2">
+            <h2 className="font-serif text-2xl text-white border-b border-white/10 pb-2">
               01 / Contact Details
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Full Name */}
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                   Full Legal Name *
                 </label>
                 <input
@@ -233,12 +227,12 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="e.g. Navaneeth Sharma"
-                  className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors ${
-                    errors.fullName ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                    errors.fullName ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
                 {errors.fullName && (
-                  <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                     <AlertCircle size={12} />
                     <span>{errors.fullName}</span>
                   </p>
@@ -247,7 +241,7 @@ export default function CheckoutPage() {
 
               {/* Email Address */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                   Email Address for Courier Updates *
                 </label>
                 <input
@@ -257,12 +251,12 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="client@atelier.com"
-                  className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors ${
-                    errors.email ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                    errors.email ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
                 {errors.email && (
-                  <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                     <AlertCircle size={12} />
                     <span>{errors.email}</span>
                   </p>
@@ -271,7 +265,7 @@ export default function CheckoutPage() {
 
               {/* Phone Number */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                   Contact Phone Number *
                 </label>
                 <input
@@ -281,12 +275,12 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="e.g. 9876543210"
-                  className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors font-mono ${
-                    errors.phone ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
+                    errors.phone ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
                 {errors.phone && (
-                  <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                     <AlertCircle size={12} />
                     <span>{errors.phone}</span>
                   </p>
@@ -297,14 +291,14 @@ export default function CheckoutPage() {
 
           {/* Section 2: Delivery Destination */}
           <div className="space-y-4">
-            <h2 className="font-serif text-2xl text-[#171717] border-b border-[#171717]/15 pb-2">
+            <h2 className="font-serif text-2xl text-white border-b border-white/10 pb-2">
               02 / Delivery Destination
             </h2>
 
             <div className="space-y-4">
               {/* Street Address */}
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                   Street Address & Residence *
                 </label>
                 <input
@@ -314,12 +308,12 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="e.g. 42 Lodhi Estate, Near India Habitat Centre"
-                  className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors ${
-                    errors.address ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                  className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                    errors.address ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                   }`}
                 />
                 {errors.address && (
-                  <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                  <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                     <AlertCircle size={12} />
                     <span>{errors.address}</span>
                   </p>
@@ -329,7 +323,7 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* City */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                     City *
                   </label>
                   <input
@@ -339,12 +333,12 @@ export default function CheckoutPage() {
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     placeholder="New Delhi"
-                    className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors ${
-                      errors.city ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                      errors.city ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
                   {errors.city && (
-                    <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                       <AlertCircle size={12} />
                       <span>{errors.city}</span>
                     </p>
@@ -353,7 +347,7 @@ export default function CheckoutPage() {
 
                 {/* State */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                     State / Region *
                   </label>
                   <input
@@ -363,12 +357,12 @@ export default function CheckoutPage() {
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     placeholder="Delhi"
-                    className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors ${
-                      errors.state ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
+                      errors.state ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
                   {errors.state && (
-                    <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                       <AlertCircle size={12} />
                       <span>{errors.state}</span>
                     </p>
@@ -377,7 +371,7 @@ export default function CheckoutPage() {
 
                 {/* Postal PIN */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-[#171717]/70 font-semibold block">
+                  <label className="text-[11px] uppercase tracking-wider text-gray-400 font-mono font-semibold block">
                     Postal / PIN Code *
                   </label>
                   <input
@@ -387,12 +381,12 @@ export default function CheckoutPage() {
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     placeholder="110003"
-                    className={`w-full bg-[#FAF8F5] border p-3 text-xs tracking-wider focus:outline-none transition-colors font-mono ${
-                      errors.postalCode ? 'border-[#6D202D] bg-red-50/20 checkout-error' : 'border-[#171717]/20 focus:border-[#171717]'
+                    className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors font-mono ${
+                      errors.postalCode ? 'border-[#E57373] bg-red-950/20 checkout-error' : 'border-white/15 focus:border-[#D4AF37]'
                     }`}
                   />
                   {errors.postalCode && (
-                    <p className="text-[11px] text-[#6D202D] flex items-center gap-1 mt-1 font-medium">
+                    <p className="text-[11px] text-[#E57373] flex items-center gap-1 mt-1 font-mono">
                       <AlertCircle size={12} />
                       <span>{errors.postalCode}</span>
                     </p>
@@ -404,44 +398,44 @@ export default function CheckoutPage() {
 
           {/* Section 3: Demo Payment Method */}
           <div className="space-y-4">
-            <h2 className="font-serif text-2xl text-[#171717] border-b border-[#171717]/15 pb-2">
+            <h2 className="font-serif text-2xl text-white border-b border-white/10 pb-2">
               03 / Demo Payment Protocol
             </h2>
 
             <div className="space-y-3">
-              <label className="flex items-start gap-3 p-4 border border-[#171717] bg-[#F6F2EA] cursor-pointer">
+              <label className="flex items-start gap-3 p-4 glass-panel border-[#D4AF37]/50 cursor-pointer rounded-xs">
                 <input
                   type="radio"
                   name="demoPaymentMethod"
                   value="atelier_cod"
                   checked={formData.demoPaymentMethod === 'atelier_cod'}
                   onChange={handleInputChange}
-                  className="mt-1 accent-[#6D202D]"
+                  className="mt-1 accent-[#D4AF37]"
                 />
                 <div className="space-y-0.5 text-xs">
-                  <span className="font-semibold uppercase tracking-wider text-[#171717] block">
+                  <span className="font-semibold uppercase tracking-wider text-white font-mono block">
                     Demo Atelier Handover / Cash on Delivery
                   </span>
-                  <span className="text-[#171717]/60 leading-relaxed block font-sans">
+                  <span className="text-gray-400 leading-relaxed block font-sans">
                     Demonstration protocol. Verification conducted at delivery handover. Zero payment card details required.
                   </span>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 p-4 border border-[#171717]/20 bg-[#FAF8F5] cursor-pointer">
+              <label className="flex items-start gap-3 p-4 glass-panel border-white/10 cursor-pointer rounded-xs">
                 <input
                   type="radio"
                   name="demoPaymentMethod"
                   value="atelier_vault"
                   checked={formData.demoPaymentMethod === 'atelier_vault'}
                   onChange={handleInputChange}
-                  className="mt-1 accent-[#6D202D]"
+                  className="mt-1 accent-[#D4AF37]"
                 />
                 <div className="space-y-0.5 text-xs">
-                  <span className="font-semibold uppercase tracking-wider text-[#171717] block">
-                    Simulated Atelier Credit Account (Demo Test)
+                  <span className="font-semibold uppercase tracking-wider text-white font-mono block">
+                    Simulated Atelier Salon Account (Demo Test)
                   </span>
-                  <span className="text-[#171717]/60 leading-relaxed block font-sans">
+                  <span className="text-gray-400 leading-relaxed block font-sans">
                     Authorizes this selection instantly against your demo salon account.
                   </span>
                 </div>
@@ -461,14 +455,14 @@ export default function CheckoutPage() {
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="h-4 w-4 border-2 border-[#08090D] border-t-transparent rounded-full animate-spin" />
                   <span>Authorizing Demo Order...</span>
                 </span>
               ) : (
                 `Complete Demo Order • ${formatCurrency(grandTotal)}`
               )}
             </Button>
-            <p className="text-center text-[10px] text-[#171717]/50 uppercase tracking-widest mt-2 font-mono">
+            <p className="text-center text-[10px] text-gray-500 uppercase tracking-widest mt-2 font-mono">
               Zero real funds will be charged • Instantaneous demo authorization
             </p>
           </div>
@@ -476,19 +470,19 @@ export default function CheckoutPage() {
 
         {/* Right Column: Order Summary Review */}
         <aside className="lg:col-span-5 space-y-6">
-          <div className="border border-[#171717]/20 bg-[#FAF8F5] p-6 sm:p-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-[#171717]/15 pb-4">
-              <h2 className="font-serif text-2xl text-[#171717]">Order Review</h2>
-              <Link to="/cart" className="text-xs uppercase tracking-wider text-[#6D202D] hover:underline font-mono">
+          <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 space-y-6 rounded-xs border border-white/15">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="font-serif text-2xl text-white">Order Review</h2>
+              <Link to="/cart" className="text-xs uppercase tracking-wider text-[#D4AF37] hover:underline font-mono">
                 Edit Bag
               </Link>
             </div>
 
             {/* Items List */}
-            <div className="divide-y divide-[#171717]/10 max-h-72 overflow-y-auto pr-1">
+            <div className="divide-y divide-white/10 max-h-72 overflow-y-auto pr-1">
               {cart.map((item) => (
                 <div key={`${item.product.id}-${item.size}-${item.color}`} className="py-3 flex gap-3 items-center">
-                  <div className="w-14 h-18 bg-[#ECE5D8] border border-[#171717]/10 overflow-hidden shrink-0">
+                  <div className="w-14 h-18 bg-[#121522] border border-white/10 overflow-hidden shrink-0">
                     <img
                       src={item.product.images ? item.product.images[0] : ''}
                       alt={item.product.name}
@@ -496,13 +490,13 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div className="flex-1 min-w-0 text-xs">
-                    <p className="font-serif text-sm text-[#171717] truncate">{item.product.name}</p>
-                    <p className="text-[11px] text-[#171717]/60 font-mono">
+                    <p className="font-serif text-sm text-white truncate">{item.product.name}</p>
+                    <p className="text-[11px] text-gray-400 font-mono">
                       {item.size} • {item.color} • Qty {item.quantity}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-semibold text-[#171717]">
+                    <span className="font-serif text-xs font-semibold text-white">
                       {formatCurrency(item.product.price * item.quantity)}
                     </span>
                   </div>
@@ -511,43 +505,43 @@ export default function CheckoutPage() {
             </div>
 
             {/* Pricing Breakdown */}
-            <div className="border-t border-[#171717]/15 pt-4 space-y-3 text-xs text-[#171717]/80">
+            <div className="border-t border-white/10 pt-4 space-y-3 text-xs text-gray-300">
               <div className="flex justify-between">
                 <span>Merchandise Subtotal</span>
-                <span className="font-mono font-semibold text-[#171717]">{formatCurrency(subtotal)}</span>
+                <span className="font-serif text-base font-semibold text-white">{formatCurrency(subtotal)}</span>
               </div>
 
               {discount > 0 && (
-                <div className="flex justify-between text-[#6D202D] font-medium">
+                <div className="flex justify-between text-[#D4AF37] font-medium font-mono">
                   <span className="flex items-center gap-1">
                     <Tag size={12} />
                     <span>Privilege Savings ({appliedCoupon?.code})</span>
                   </span>
-                  <span className="font-mono">-{formatCurrency(discount)}</span>
+                  <span>-{formatCurrency(discount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span>White-Glove Courier Delivery</span>
-                <span className="font-mono">
+                <span className="font-mono text-xs">
                   {shipping === 0 ? (
-                    <span className="text-emerald-700 font-semibold uppercase text-[11px]">Complimentary</span>
+                    <span className="text-emerald-400 font-semibold uppercase text-[11px]">Complimentary</span>
                   ) : (
                     formatCurrency(shipping)
                   )}
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-[#171717]/15 flex justify-between items-baseline text-base font-semibold text-[#171717]">
+              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-base font-semibold text-white">
                 <span>Total Authorization</span>
-                <span className="font-mono text-xl">{formatCurrency(grandTotal)}</span>
+                <span className="font-serif text-2xl text-white">{formatCurrency(grandTotal)}</span>
               </div>
             </div>
 
             {/* Logistics Guarantee */}
-            <div className="border-t border-[#171717]/10 pt-4 flex items-start gap-2.5 text-xs text-[#171717]/60">
-              <Truck size={15} className="text-[#6D202D] shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed">
+            <div className="border-t border-white/10 pt-4 flex items-start gap-2.5 text-xs text-gray-400">
+              <Truck size={15} className="text-[#D4AF37] shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-relaxed font-mono">
                 Complimentary 30-day salon returns and insured express transit.
               </p>
             </div>

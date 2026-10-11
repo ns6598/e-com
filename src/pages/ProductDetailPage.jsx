@@ -12,6 +12,7 @@ import {
   X,
   Ruler,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react'
 import { PRODUCTS } from '../data/products'
 import { formatCurrency, calculateDiscountPercentage } from '../utils/formatters'
@@ -36,7 +37,7 @@ export default function ProductDetailPage() {
   const [sizeError, setSizeError] = useState(false)
   const [addedSuccess, setAddedSuccess] = useState(false)
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
-  const [sizeGuideUnit, setSizeGuideUnit] = useState('cm') // 'cm' | 'in'
+  const [sizeGuideUnit, setSizeGuideUnit] = useState('cm')
 
   // Accordion state: toggle open sections
   const [openAccordions, setOpenAccordions] = useState({
@@ -58,131 +59,121 @@ export default function ProductDetailPage() {
       setQuantity(1)
       setSizeError(false)
       setAddedSuccess(false)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }, [id, product])
+  }, [product, id])
 
-  // Proper Not-Found State for unknown product IDs
+  // Handle Missing Product Route gracefully
   if (!product) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-32 text-center space-y-6">
-        <span className="tag-overline text-[#6D202D]">ERROR 404</span>
-        <h1 className="editorial-title text-4xl sm:text-5xl font-serif text-[#171717]">
-          Silhouette Not Found in Archive
+      <div className="max-w-4xl mx-auto px-4 py-28 text-center space-y-6 text-white">
+        <span className="tag-overline text-[#D4AF37] font-mono">ARCHIVAL REPERTOIRE</span>
+        <h1 className="editorial-title text-4xl sm:text-5xl font-serif">
+          Silhouette Not Found
         </h1>
-        <p className="text-xs text-[#171717]/60 tracking-wider max-w-md mx-auto leading-relaxed">
-          The requested garment identifier does not exist or has concluded its limited salon edition run.
+        <p className="font-serif text-lg text-gray-400 font-light max-w-md mx-auto">
+          The requested monograph piece may have been retired to our private salon archives or the catalog reference is invalid.
         </p>
-        <div className="pt-4 flex justify-center gap-4">
-          <Button variant="primary" size="md" to="/shop">
-            Return to Collection
-          </Button>
-          <Button variant="secondary" size="md" to="/">
-            Back to Home
+        <div className="pt-4">
+          <Button variant="primary" size="lg" to="/shop">
+            Return to Active Catalog
           </Button>
         </div>
       </div>
     )
   }
 
-  const inWishlist = isInWishlist(product.id)
+  // Related products from the same department/category
+  const relatedProducts = PRODUCTS.filter(
+    (p) => p.id !== product.id && (p.department === product.department || p.category === product.category)
+  ).slice(0, 3)
+
   const isOneSize =
     product.requiresSize === false ||
     (product.sizes && product.sizes.length === 1 && product.sizes[0].toLowerCase() === 'one size')
 
-  const maxStock = product.stock || 10
-  const isDiscounted = product.originalPrice && product.originalPrice > product.price
   const discountPercent = calculateDiscountPercentage(product.price, product.originalPrice)
-
-  // Related products from the same department or category (excluding current)
-  const relatedProducts = PRODUCTS.filter(
-    (p) => p.id !== product.id && (p.category === product.category || p.department === product.department)
-  ).slice(0, 3)
-
-  const toggleAccordion = (section) => {
-    setOpenAccordions((prev) => ({ ...prev, [section]: !prev[section] }))
-  }
+  const isDiscounted = discountPercent > 0
+  const inWishlist = isInWishlist(product.id)
+  const maxStock = product.stock || 10
 
   const handleAddToCart = () => {
-    // Validate size selection
     if (!isOneSize && !selectedSize) {
       setSizeError(true)
       return
     }
 
-    setSizeError(false)
+    const finalColor = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0].name : 'Default')
     const finalSize = isOneSize ? 'One Size' : selectedSize
-    const finalColor = selectedColor || (product.colors && product.colors[0] ? product.colors[0].name : 'Default')
 
     addToCart(product, finalSize, finalColor, quantity)
     setAddedSuccess(true)
+    setSizeError(false)
 
     setTimeout(() => {
       setAddedSuccess(false)
       openCart()
-    }, 1200)
+    }, 600)
+  }
+
+  const toggleAccordion = (key) => {
+    setOpenAccordions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-16 sm:space-y-24">
-      {/* =========================================================================
-          BREADCRUMB NAVIGATION
-          ========================================================================= */}
-      <nav aria-label="Breadcrumb" className="flex items-center space-x-2 text-xs uppercase tracking-widest text-[#171717]/60 overflow-x-auto pb-1">
-        <Link to="/" className="hover:text-[#6D202D] transition-colors shrink-0">
-          Home
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-16 text-white">
+      {/* Editorial Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 font-mono">
+        <Link to="/" className="hover:text-[#D4AF37] transition-colors">
+          Atelier Home
         </Link>
-        <ChevronRight size={12} className="text-[#171717]/30 shrink-0" />
-        <Link to="/shop" className="hover:text-[#6D202D] transition-colors shrink-0">
-          Shop
+        <ChevronRight size={12} className="text-gray-600" />
+        <Link to="/shop" className="hover:text-[#D4AF37] transition-colors">
+          Catalog
         </Link>
-        <ChevronRight size={12} className="text-[#171717]/30 shrink-0" />
-        <Link
-          to={`/shop?department=${product.department}`}
-          className="hover:text-[#6D202D] transition-colors shrink-0"
-        >
+        <ChevronRight size={12} className="text-gray-600" />
+        <Link to={`/shop?department=${product.department}`} className="hover:text-[#D4AF37] transition-colors">
           {product.department}
         </Link>
-        <ChevronRight size={12} className="text-[#171717]/30 shrink-0" />
-        <span className="text-[#171717] font-semibold truncate">{product.name}</span>
+        <ChevronRight size={12} className="text-gray-600" />
+        <span className="text-[#D4AF37] font-semibold truncate max-w-xs">{product.name}</span>
       </nav>
 
-      {/* =========================================================================
-          MAIN PRODUCT SHOWCASE: Gallery (Left) + Purchase Controls (Right)
-          Two-column wide desktop layout, stacked mobile layout
-          ========================================================================= */}
+      {/* Main Product Showcase: Gallery (Left) + Purchase Controls (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-        {/* LEFT COLUMN: LARGE PRODUCT IMAGE GALLERY */}
+        {/* Left Column: Product Gallery */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Main Visual Frame with deliberate crop & zoom */}
-          <div className="relative aspect-[3/4] bg-[#ECE5D8] border border-[#171717]/15 overflow-hidden group">
+          {/* Main Visual Frame */}
+          <div className="relative aspect-[3/4] bg-[#121522] border border-white/10 overflow-hidden group shadow-2xl">
             <img
               src={product.images[activeImageIndex] || product.images[0]}
-              alt={`${product.name} editorial angle ${activeImageIndex + 1}`}
+              alt={`${product.name} angle ${activeImageIndex + 1}`}
               onError={(e) => {
                 e.target.src = 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
               }}
-              className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-103"
+              className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-104"
             />
 
-            {/* Badges: Sale % or Tag */}
+            {/* Badges */}
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 items-start">
               {discountPercent > 0 && (
-                <span className="bg-[#6D202D] text-[#FFFFFF] text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-semibold shadow-xs">
+                <span className="bg-[#7E1828] text-white text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-semibold shadow-md">
                   -{discountPercent}% OFF
                 </span>
               )}
               {product.tag && discountPercent === 0 && (
-                <span className="bg-[#171717] text-[#F6F2EA] text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-semibold shadow-xs">
+                <span className="bg-[#D4AF37] text-[#08090D] text-[10px] uppercase tracking-[0.22em] px-3 py-1 font-bold shadow-md">
                   {product.tag}
                 </span>
               )}
             </div>
 
-            {/* Stock indicator badge if low */}
+            {/* Low Stock Indicator */}
             {product.stock && product.stock <= 5 && (
-              <div className="absolute bottom-4 right-4 z-10 bg-[#171717]/90 text-[#F6F2EA] px-3 py-1 text-[9px] uppercase tracking-widest font-mono backdrop-blur-xs">
-                Only {product.stock} pieces in stock
+              <div className="absolute bottom-4 right-4 z-10 glass-panel border-white/10 text-white px-3 py-1 text-[9px] uppercase tracking-widest font-mono">
+                Only {product.stock} pieces in atelier batch
               </div>
             )}
           </div>
@@ -200,8 +191,8 @@ export default function ProductDetailPage() {
                   onClick={() => setActiveImageIndex(idx)}
                   className={`relative w-20 sm:w-24 aspect-[3/4] border transition-all cursor-pointer shrink-0 ${
                     activeImageIndex === idx
-                      ? 'border-[#171717] ring-1 ring-[#171717] opacity-100'
-                      : 'border-[#171717]/20 opacity-60 hover:opacity-100'
+                      ? 'border-[#D4AF37] ring-1 ring-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.4)] opacity-100'
+                      : 'border-white/15 opacity-60 hover:opacity-100'
                   }`}
                 >
                   <img
@@ -215,37 +206,37 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* RIGHT COLUMN: PRODUCT SPECIFICATION & PURCHASE FLOW */}
+        {/* Right Column: Garment Information & Purchase Controls */}
         <div className="lg:col-span-5 space-y-7">
           {/* Header & Pricing */}
-          <div className="space-y-3 border-b border-[#171717]/15 pb-6">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[#171717]/60 font-mono">
+          <div className="space-y-3 border-b border-white/10 pb-6">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-gray-400 font-mono">
               <span>{product.category} • {product.department}</span>
-              <span className={product.inStock ? 'text-emerald-700 font-medium' : 'text-red-700 font-medium'}>
+              <span className={product.inStock ? 'text-emerald-400 font-medium' : 'text-red-400 font-medium'}>
                 {product.inStock ? 'In Stock • Atelier Ready' : 'Archived / Sold Out'}
               </span>
             </div>
 
-            <h1 className="editorial-title text-3xl sm:text-4xl lg:text-5xl font-serif text-[#171717] tracking-tight">
+            <h1 className="editorial-title text-3xl sm:text-4xl lg:text-5xl font-serif text-white tracking-tight">
               {product.name}
             </h1>
 
             {product.subtitle && (
-              <p className="font-serif italic text-base text-[#171717]/75 font-light leading-relaxed">
+              <p className="font-serif italic text-base text-gray-300 font-light leading-relaxed">
                 {product.subtitle}
               </p>
             )}
 
             <div className="pt-2 flex items-baseline gap-3">
-              <span className="font-sans text-2xl sm:text-3xl font-semibold text-[#171717]">
+              <span className="font-serif text-2xl sm:text-3xl font-medium text-white">
                 {formatCurrency(product.price)}
               </span>
               {isDiscounted && (
                 <>
-                  <span className="text-base text-[#171717]/40 line-through font-sans">
+                  <span className="text-base text-gray-500 line-through font-serif">
                     {formatCurrency(product.originalPrice)}
                   </span>
-                  <span className="text-xs font-semibold text-[#6D202D] bg-[#6D202D]/10 px-2 py-0.5 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-[#D4AF37] glass-panel border-[#D4AF37]/30 px-2 py-0.5 uppercase tracking-wider font-mono">
                     {`Save ${discountPercent}%`}
                   </span>
                 </>
@@ -253,12 +244,12 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Color Swatches with accessible labels */}
+          {/* Color Swatches */}
           {product.colors && product.colors.length > 0 && (
             <div className="space-y-2.5">
-              <div className="flex justify-between text-xs tracking-wider uppercase">
-                <span className="text-[#171717]/60">Selected Hue:</span>
-                <span className="font-semibold text-[#171717]">{selectedColor}</span>
+              <div className="flex justify-between text-xs tracking-wider uppercase font-mono">
+                <span className="text-gray-400">Selected Hue:</span>
+                <span className="font-semibold text-white">{selectedColor}</span>
               </div>
               <div className="flex items-center gap-2.5" role="radiogroup" aria-label="Color tones">
                 {product.colors.map((c) => (
@@ -271,11 +262,13 @@ export default function ProductDetailPage() {
                     title={c.name}
                     onClick={() => setSelectedColor(c.name)}
                     className={`h-8 w-8 rounded-full border-2 transition-all p-0.5 cursor-pointer ${
-                      selectedColor === c.name ? 'border-[#171717] scale-110 ring-1 ring-[#171717]' : 'border-transparent hover:scale-105'
+                      selectedColor === c.name
+                        ? 'border-[#D4AF37] scale-110 shadow-[0_0_10px_rgba(212,175,55,0.5)]'
+                        : 'border-white/20 hover:scale-105'
                     }`}
                   >
                     <span
-                      className="block h-full w-full rounded-full border border-black/20"
+                      className="block h-full w-full rounded-full border border-black/30"
                       style={{ backgroundColor: c.hex }}
                     />
                   </button>
@@ -286,14 +279,14 @@ export default function ProductDetailPage() {
 
           {/* Size Selector & Size Guide Trigger */}
           <div className="space-y-2.5">
-            <div className="flex justify-between items-center text-xs tracking-wider uppercase">
-              <span className="text-[#171717]/60">
+            <div className="flex justify-between items-center text-xs tracking-wider uppercase font-mono">
+              <span className="text-gray-400">
                 {isOneSize ? 'Fit Specification:' : 'Select Silhouette Size:'}
               </span>
               <button
                 type="button"
                 onClick={() => setSizeGuideOpen(true)}
-                className="inline-flex items-center gap-1 text-[11px] text-[#6D202D] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] text-[#D4AF37] hover:underline cursor-pointer"
               >
                 <Ruler size={13} />
                 <span>Size Guide</span>
@@ -301,7 +294,7 @@ export default function ProductDetailPage() {
             </div>
 
             {isOneSize ? (
-              <div className="p-3 border border-[#171717]/20 bg-[#FAF8F5] text-xs font-mono uppercase tracking-wider text-[#171717]">
+              <div className="p-3 border border-white/15 glass-panel text-xs font-mono uppercase tracking-wider text-gray-200">
                 One Size — Universal Sculptural Fit
               </div>
             ) : (
@@ -317,10 +310,10 @@ export default function ProductDetailPage() {
                         setSelectedSize(sz)
                         setSizeError(false)
                       }}
-                      className={`py-3 text-xs uppercase tracking-wider font-medium border transition-colors cursor-pointer ${
+                      className={`py-3 text-xs uppercase tracking-wider font-mono font-medium border transition-colors cursor-pointer ${
                         selectedSize === sz
-                          ? 'bg-[#171717] text-[#F6F2EA] border-[#171717]'
-                          : 'bg-transparent text-[#171717] border-[#171717]/25 hover:border-[#171717] hover:bg-[#171717]/5'
+                          ? 'border-[#D4AF37] bg-[#D4AF37] text-[#08090D] font-bold shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                          : 'bg-white/5 text-gray-300 border-white/15 hover:border-[#D4AF37]'
                       }`}
                     >
                       {sz}
@@ -329,7 +322,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 {sizeError && (
-                  <div className="flex items-center gap-1.5 text-xs text-[#6D202D] font-medium pt-1 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-1.5 text-xs text-[#E57373] font-medium pt-1 animate-in fade-in duration-200 font-mono">
                     <AlertCircle size={14} />
                     <span>Please select a size before adding this piece to your bag.</span>
                   </div>
@@ -338,21 +331,21 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Quantity Selector, Add to Bag & Wishlist Button */}
+          {/* Quantity, Add to Bag & Wishlist Button */}
           <div className="space-y-4 pt-2">
             <div className="flex items-center gap-3 sm:gap-4">
-              {/* Stepper (constrained strictly between 1 and maxStock) */}
-              <div className="flex items-center border border-[#171717]/20 bg-[#FAF8F5] h-13 shrink-0">
+              {/* Stepper */}
+              <div className="flex items-center border border-white/20 bg-white/5 h-13 shrink-0">
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                   disabled={quantity <= 1 || !product.inStock}
                   aria-label="Decrease quantity"
-                  className="px-3.5 hover:bg-[#171717]/5 h-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3.5 hover:bg-white/10 h-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed text-gray-300"
                 >
                   <Minus size={14} />
                 </button>
-                <span className="w-9 text-center text-xs font-mono font-semibold">
+                <span className="w-9 text-center text-xs font-mono font-semibold text-white">
                   {quantity}
                 </span>
                 <button
@@ -360,7 +353,7 @@ export default function ProductDetailPage() {
                   onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
                   disabled={quantity >= maxStock || !product.inStock}
                   aria-label="Increase quantity"
-                  className="px-3.5 hover:bg-[#171717]/5 h-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3.5 hover:bg-white/10 h-full transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed text-gray-300"
                 >
                   <Plus size={14} />
                 </button>
@@ -377,7 +370,7 @@ export default function ProductDetailPage() {
                   className="h-13"
                 >
                   {addedSuccess ? (
-                    <span className="flex items-center gap-2 text-emerald-300">
+                    <span className="flex items-center gap-2 text-[#08090D] font-bold">
                       <Check size={16} />
                       <span>Added to Bag</span>
                     </span>
@@ -389,59 +382,56 @@ export default function ProductDetailPage() {
                 </Button>
               </div>
 
-              {/* Wishlist Toggle Button */}
+              {/* Wishlist Button */}
               <button
                 type="button"
                 onClick={() => toggleWishlist(product)}
                 aria-label={inWishlist ? 'Remove from wishlist' : 'Save to wishlist'}
-                className="h-13 w-13 border border-[#171717]/20 bg-[#FAF8F5] flex items-center justify-center hover:bg-[#171717] hover:text-[#F6F2EA] transition-colors shrink-0 cursor-pointer"
+                className="h-13 w-13 border border-white/20 glass-panel flex items-center justify-center hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors shrink-0 cursor-pointer"
                 title={inWishlist ? 'Remove from wishlist' : 'Save to wishlist'}
               >
                 <Heart
                   size={19}
                   className={`transition-colors ${
-                    inWishlist ? 'fill-[#6D202D] text-[#6D202D]' : 'text-current'
+                    inWishlist ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-gray-300'
                   }`}
                 />
               </button>
             </div>
 
-            {/* Inventory Warning Notice if under 5 items */}
             {product.stock && product.stock <= 5 && (
-              <p className="text-[11px] text-[#6D202D] uppercase tracking-wider font-mono">
+              <p className="text-[11px] text-[#D4AF37] uppercase tracking-wider font-mono">
                 Atelier Allocation Notice: Only {product.stock} pieces remaining.
               </p>
             )}
           </div>
 
           {/* Service Guarantees Strip */}
-          <div className="grid grid-cols-2 gap-4 py-5 border-y border-[#171717]/15 text-xs">
+          <div className="grid grid-cols-2 gap-4 py-5 border-y border-white/10 text-xs">
             <div className="flex items-start gap-2.5">
-              <Truck size={16} className="text-[#6D202D] shrink-0 mt-0.5" />
+              <Truck size={16} className="text-[#D4AF37] shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-[#171717] uppercase tracking-wider text-[10px]">White-Glove Courier</p>
-                <p className="text-[#171717]/60 text-[11px] mt-0.5">Complimentary express shipping on orders over ₹25,000.</p>
+                <p className="font-semibold text-white uppercase tracking-wider text-[10px] font-mono">White-Glove Courier</p>
+                <p className="text-gray-400 text-[11px] mt-0.5">Complimentary express shipping on orders over ₹25,000.</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
-              <RotateCcw size={16} className="text-[#6D202D] shrink-0 mt-0.5" />
+              <RotateCcw size={16} className="text-[#D4AF37] shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-[#171717] uppercase tracking-wider text-[10px]">Complimentary Returns</p>
-                <p className="text-[#171717]/60 text-[11px] mt-0.5">30-day salon return window and lifetime seam maintenance.</p>
+                <p className="font-semibold text-white uppercase tracking-wider text-[10px] font-mono">Complimentary Returns</p>
+                <p className="text-gray-400 text-[11px] mt-0.5">30-day salon return window and lifetime seam maintenance.</p>
               </div>
             </div>
           </div>
 
-          {/* =========================================================================
-              ACCORDION: Design Commentary, Materials, Care & Shipping
-              ========================================================================= */}
-          <div className="divide-y divide-[#171717]/15 text-xs">
+          {/* Accordion Sections */}
+          <div className="divide-y divide-white/10 text-xs">
             {/* 1. Design Commentary */}
             <div className="py-4">
               <button
                 type="button"
                 onClick={() => toggleAccordion('commentary')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-[#171717] cursor-pointer"
+                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
               >
                 <span>Design Commentary & Fit</span>
                 <ChevronDown
@@ -450,13 +440,13 @@ export default function ProductDetailPage() {
                 />
               </button>
               {openAccordions.commentary && (
-                <div className="pt-3 space-y-3 font-serif text-sm leading-relaxed text-[#171717]/80 font-light">
+                <div className="pt-3 space-y-3 font-serif text-sm leading-relaxed text-gray-300 font-light">
                   <p>{product.description}</p>
                   {product.details && (
-                    <ul className="space-y-1.5 pt-2 text-xs font-sans text-[#171717]/70">
+                    <ul className="space-y-1.5 pt-2 text-xs font-sans text-gray-400">
                       {product.details.map((detail, idx) => (
                         <li key={idx} className="flex items-start gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#6D202D] mt-1.5 shrink-0" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] mt-1.5 shrink-0" />
                           <span>{detail}</span>
                         </li>
                       ))}
@@ -471,7 +461,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => toggleAccordion('materials')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-[#171717] cursor-pointer"
+                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
               >
                 <span>Materials & Fiber Provenance</span>
                 <ChevronDown
@@ -480,13 +470,13 @@ export default function ProductDetailPage() {
                 />
               </button>
               {openAccordions.materials && (
-                <div className="pt-3 space-y-2 text-xs text-[#171717]/75 leading-relaxed font-sans">
+                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
                   <p>
-                    <strong className="text-[#171717] block">Material Composition:</strong>
+                    <strong className="text-white block">Material Composition:</strong>
                     {product.materials || '100% Noble natural fibers.'}
                   </p>
                   <p>
-                    <strong className="text-[#171717] block mt-2">Provenance:</strong>
+                    <strong className="text-white block mt-2">Provenance:</strong>
                     Woven in historic partner mills in Northern Italy and Tuscany. Finished without petroleum-based synthetic blends.
                   </p>
                 </div>
@@ -498,7 +488,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => toggleAccordion('care')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-[#171717] cursor-pointer"
+                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
               >
                 <span>Preservation & Garment Care</span>
                 <ChevronDown
@@ -507,9 +497,9 @@ export default function ProductDetailPage() {
                 />
               </button>
               {openAccordions.care && (
-                <div className="pt-3 space-y-2 text-xs text-[#171717]/75 leading-relaxed font-sans">
+                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
                   <p>{product.careInstructions || 'Specialist dry clean only. Steam vertical only.'}</p>
-                  <p className="text-[11px] text-[#171717]/60 italic font-serif">
+                  <p className="text-[11px] text-gray-400 italic font-serif">
                     All AUREVA garments include complimentary seam and hardware servicing by our atelier repair team.
                   </p>
                 </div>
@@ -521,7 +511,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => toggleAccordion('shipping')}
-                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-[#171717] cursor-pointer"
+                className="w-full flex items-center justify-between text-left uppercase tracking-wider font-mono font-semibold text-white cursor-pointer"
               >
                 <span>Shipping, Duties & Salon Returns</span>
                 <ChevronDown
@@ -530,7 +520,7 @@ export default function ProductDetailPage() {
                 />
               </button>
               {openAccordions.shipping && (
-                <div className="pt-3 space-y-2 text-xs text-[#171717]/75 leading-relaxed font-sans">
+                <div className="pt-3 space-y-2 text-xs text-gray-300 leading-relaxed font-sans">
                   <p>
                     Orders placed before 14:00 CET are dispatched same-day via express insured air courier. Delivery to major metropolitan centers takes 2–4 business days.
                   </p>
@@ -544,21 +534,19 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* =========================================================================
-          RELATED PRODUCTS: From The Same Wardrobe / Category
-          ========================================================================= */}
+      {/* Related Products */}
       {relatedProducts.length > 0 && (
-        <section className="pt-16 border-t border-[#171717]/15" aria-label="Complementary wardrobe pieces">
+        <section className="pt-16 border-t border-white/10" aria-label="Complementary wardrobe pieces">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
             <div>
-              <span className="tag-overline text-[#6D202D]">COMPLEMENTARY REPERTOIRE</span>
-              <h2 className="editorial-title text-3xl sm:text-4xl font-serif text-[#171717] mt-1">
+              <span className="tag-overline text-[#D4AF37] font-mono">COMPLEMENTARY REPERTOIRE</span>
+              <h2 className="editorial-title text-3xl sm:text-4xl font-serif text-white mt-1">
                 From The Same Wardrobe
               </h2>
             </div>
             <Link
               to={`/shop?department=${product.department}`}
-              className="text-xs uppercase tracking-[0.2em] hover:text-[#6D202D] border-b border-[#171717] pb-0.5 transition-colors self-start sm:self-auto"
+              className="text-xs uppercase tracking-[0.2em] text-[#D4AF37] hover:text-white border-b border-[#D4AF37]/50 pb-0.5 transition-colors self-start sm:self-auto font-mono"
             >
               Explore {product.department} Collection →
             </Link>
@@ -572,33 +560,31 @@ export default function ProductDetailPage() {
         </section>
       )}
 
-      {/* =========================================================================
-          SIZE GUIDE MODAL
-          ========================================================================= */}
+      {/* Size Guide Modal */}
       {sizeGuideOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Size Guide Chart">
           <div
-            className="fixed inset-0 bg-[#171717]/70 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md transition-opacity"
             onClick={() => setSizeGuideOpen(false)}
             aria-hidden="true"
           />
 
           <div className="min-h-full flex items-center justify-center p-4">
-            <div className="relative bg-[#F6F2EA] border border-[#171717]/20 max-w-2xl w-full p-6 sm:p-10 shadow-2xl space-y-6 text-[#171717]">
+            <div className="relative glass-panel-gold bg-[#0E1018]/98 border border-white/15 max-w-2xl w-full p-6 sm:p-10 shadow-2xl space-y-6 text-white rounded-xs">
               {/* Modal Header */}
-              <div className="flex items-start justify-between border-b border-[#171717]/10 pb-4">
+              <div className="flex items-start justify-between border-b border-white/10 pb-4">
                 <div>
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#6D202D] font-mono">
+                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono">
                     ATELIER MEASUREMENTS
                   </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl font-light mt-0.5">
+                  <h3 className="font-serif text-2xl sm:text-3xl font-light mt-0.5 text-white">
                     Silhouette Size Guide
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSizeGuideOpen(false)}
-                  className="p-2 text-[#171717]/60 hover:text-[#171717] cursor-pointer"
+                  className="p-1.5 text-gray-400 hover:text-white cursor-pointer"
                   aria-label="Close size guide"
                 >
                   <X size={20} />
@@ -607,15 +593,15 @@ export default function ProductDetailPage() {
 
               {/* Unit Toggle */}
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[#171717]/60">Measurement Units:</span>
-                <div className="inline-flex border border-[#171717]/20 p-0.5 bg-[#FAF8F5]">
+                <span className="text-gray-400 font-mono">Measurement Units:</span>
+                <div className="inline-flex border border-white/20 p-0.5 bg-[#121522]">
                   <button
                     type="button"
                     onClick={() => setSizeGuideUnit('cm')}
                     className={`px-3 py-1 font-mono uppercase tracking-wider text-[11px] cursor-pointer ${
                       sizeGuideUnit === 'cm'
-                        ? 'bg-[#171717] text-[#F6F2EA]'
-                        : 'text-[#171717]/60 hover:text-[#171717]'
+                        ? 'gold-gradient-bg text-[#08090D] font-bold'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Centimeters (cm)
@@ -625,8 +611,8 @@ export default function ProductDetailPage() {
                     onClick={() => setSizeGuideUnit('in')}
                     className={`px-3 py-1 font-mono uppercase tracking-wider text-[11px] cursor-pointer ${
                       sizeGuideUnit === 'in'
-                        ? 'bg-[#171717] text-[#F6F2EA]'
-                        : 'text-[#171717]/60 hover:text-[#171717]'
+                        ? 'gold-gradient-bg text-[#08090D] font-bold'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Inches (in)
@@ -638,7 +624,7 @@ export default function ProductDetailPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-[#171717] text-[#171717]/60">
+                    <tr className="border-b border-white/20 text-[#D4AF37]">
                       <th className="py-2.5 font-medium">Size</th>
                       <th className="py-2.5 font-medium">Bust/Chest</th>
                       <th className="py-2.5 font-medium">Waist</th>
@@ -646,39 +632,39 @@ export default function ProductDetailPage() {
                       <th className="py-2.5 font-medium">Sleeve</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#171717]/10">
+                  <tbody className="divide-y divide-white/10 text-gray-300">
                     {sizeGuideUnit === 'cm' ? (
                       <>
                         <tr>
-                          <td className="py-2.5 font-bold">XS</td>
+                          <td className="py-2.5 font-bold text-white">XS</td>
                           <td className="py-2.5">84–88</td>
                           <td className="py-2.5">66–70</td>
                           <td className="py-2.5">90–94</td>
                           <td className="py-2.5">81</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">S</td>
+                          <td className="py-2.5 font-bold text-white">S</td>
                           <td className="py-2.5">88–94</td>
                           <td className="py-2.5">70–76</td>
                           <td className="py-2.5">94–100</td>
                           <td className="py-2.5">83</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">M</td>
+                          <td className="py-2.5 font-bold text-white">M</td>
                           <td className="py-2.5">94–102</td>
                           <td className="py-2.5">76–84</td>
                           <td className="py-2.5">100–108</td>
                           <td className="py-2.5">85</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">L</td>
+                          <td className="py-2.5 font-bold text-white">L</td>
                           <td className="py-2.5">102–110</td>
                           <td className="py-2.5">84–92</td>
                           <td className="py-2.5">108–116</td>
                           <td className="py-2.5">87</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">XL</td>
+                          <td className="py-2.5 font-bold text-white">XL</td>
                           <td className="py-2.5">110–118</td>
                           <td className="py-2.5">92–100</td>
                           <td className="py-2.5">116–124</td>
@@ -688,35 +674,35 @@ export default function ProductDetailPage() {
                     ) : (
                       <>
                         <tr>
-                          <td className="py-2.5 font-bold">XS</td>
+                          <td className="py-2.5 font-bold text-white">XS</td>
                           <td className="py-2.5">33–34.5</td>
                           <td className="py-2.5">26–27.5</td>
                           <td className="py-2.5">35.5–37</td>
                           <td className="py-2.5">31.8</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">S</td>
+                          <td className="py-2.5 font-bold text-white">S</td>
                           <td className="py-2.5">34.5–37</td>
                           <td className="py-2.5">27.5–30</td>
                           <td className="py-2.5">37–39.5</td>
                           <td className="py-2.5">32.6</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">M</td>
+                          <td className="py-2.5 font-bold text-white">M</td>
                           <td className="py-2.5">37–40</td>
                           <td className="py-2.5">30–33</td>
                           <td className="py-2.5">39.5–42.5</td>
                           <td className="py-2.5">33.4</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">L</td>
+                          <td className="py-2.5 font-bold text-white">L</td>
                           <td className="py-2.5">40–43.5</td>
                           <td className="py-2.5">33–36</td>
                           <td className="py-2.5">42.5–45.5</td>
                           <td className="py-2.5">34.2</td>
                         </tr>
                         <tr>
-                          <td className="py-2.5 font-bold">XL</td>
+                          <td className="py-2.5 font-bold text-white">XL</td>
                           <td className="py-2.5">43.5–46.5</td>
                           <td className="py-2.5">36–39.5</td>
                           <td className="py-2.5">45.5–48.8</td>
@@ -729,9 +715,9 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Fitting Philosophy Note */}
-              <div className="bg-[#FAF8F5] p-4 border border-[#171717]/10 text-xs font-serif leading-relaxed text-[#171717]/75">
+              <div className="glass-panel p-4 border border-white/10 text-xs font-serif leading-relaxed text-gray-300">
                 <p>
-                  <strong>Atelier Fitting Guidance:</strong> AUREVA garments are cut with deliberate architectural ease. For an oversized runway drape, order your true size. For a tailored, closer silhouette, we advise taking one size down.
+                  <strong className="text-white">Atelier Fitting Guidance:</strong> AUREVA garments are cut with deliberate architectural ease. For an oversized runway drape, order your true size. For a tailored, closer silhouette, we advise taking one size down.
                 </p>
               </div>
             </div>

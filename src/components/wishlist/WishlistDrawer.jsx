@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { X, Trash2, ShoppingBag } from 'lucide-react'
+import { X, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { useWishlist } from '../../context/WishlistContext'
 import { useCart } from '../../context/CartContext'
 import { formatCurrency } from '../../utils/formatters'
@@ -15,23 +15,23 @@ export default function WishlistDrawer({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div
-        className="fixed inset-0 bg-[#171717]/60 backdrop-blur-xs transition-opacity duration-300"
+        className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
         <aside
           role="dialog"
           aria-modal="true"
           aria-label="Saved Pieces"
-          className="w-screen max-w-md bg-[#F6F2EA] border-l border-[#171717]/15 flex flex-col shadow-2xl text-[#171717]"
+          className="w-screen max-w-md bg-[#0C0E16] border-l border-white/10 flex flex-col shadow-2xl text-white"
         >
           {/* Header */}
-          <div className="p-6 border-b border-[#171717]/10 flex items-center justify-between">
+          <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#10131E]/60">
             <div className="flex items-baseline gap-3">
-              <h2 className="font-serif text-2xl tracking-tight">Saved Pieces</h2>
-              <span className="font-sans text-xs tracking-widest text-[#171717]/60 uppercase">
+              <h2 className="font-serif text-2xl tracking-tight text-white">Saved Pieces</h2>
+              <span className="font-mono text-xs tracking-widest text-[#D4AF37] uppercase">
                 ({wishlist.length})
               </span>
             </div>
@@ -39,18 +39,18 @@ export default function WishlistDrawer({ isOpen, onClose }) {
               type="button"
               onClick={onClose}
               aria-label="Close wishlist drawer"
-              className="p-2 text-[#171717]/60 hover:text-[#171717] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6D202D]"
+              className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Items */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-[#171717]/10">
+          <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-white/10">
             {wishlist.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                <p className="font-serif text-xl mb-1">No pieces curated yet</p>
-                <p className="text-xs text-[#171717]/60 tracking-wider mb-6 max-w-xs">
+                <p className="font-serif text-xl mb-1 text-white">No pieces curated yet</p>
+                <p className="text-xs text-gray-400 tracking-wider mb-6 max-w-xs font-mono">
                   Save your desired garments from the runway and catalog.
                 </p>
                 <Button
@@ -68,12 +68,12 @@ export default function WishlistDrawer({ isOpen, onClose }) {
                   <Link
                     to={`/product/${product.id}`}
                     onClick={onClose}
-                    className="relative w-20 h-26 shrink-0 bg-[#ECE5D8] border border-[#171717]/10 overflow-hidden"
+                    className="relative w-20 h-26 shrink-0 bg-[#121520] border border-white/10 overflow-hidden group"
                   >
                     <img
                       src={product.images[0]}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </Link>
 
@@ -83,7 +83,7 @@ export default function WishlistDrawer({ isOpen, onClose }) {
                         <Link
                           to={`/product/${product.id}`}
                           onClick={onClose}
-                          className="font-serif text-base leading-snug hover:text-[#6D202D] transition-colors"
+                          className="font-serif text-base leading-snug text-white hover:text-[#D4AF37] transition-colors"
                         >
                           {product.name}
                         </Link>
@@ -91,35 +91,53 @@ export default function WishlistDrawer({ isOpen, onClose }) {
                           type="button"
                           onClick={() => removeFromWishlist(product.id)}
                           aria-label={`Remove ${product.name}`}
-                          className="text-[#171717]/40 hover:text-[#6D202D] transition-colors p-1"
+                          className="text-gray-500 hover:text-[#A3283E] transition-colors p-1 cursor-pointer"
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
-                      <p className="text-xs text-[#171717]/70 font-sans mt-1">
+                      <p className="font-serif text-sm text-[#D4AF37] mt-1 font-medium">
                         {formatCurrency(product.price)}
                       </p>
                     </div>
 
-                    <div className="pt-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        type="button"
                         onClick={() => {
-                          addToCart(product)
+                          const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'One Size'
+                          const color = product.colors && product.colors.length > 0 ? product.colors[0].name : 'Default'
+                          addToCart(product, size, color, 1)
+                          removeFromWishlist(product.id)
                           onClose()
                           openCart()
                         }}
-                        icon={ShoppingBag}
+                        className="flex-1 py-1.5 px-3 text-[10px] uppercase font-mono tracking-widest gold-gradient-bg text-[#08090D] font-bold hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                       >
-                        Move to Bag
-                      </Button>
+                        <ShoppingBag size={12} />
+                        <span>Move to Bag</span>
+                      </button>
                     </div>
                   </div>
                 </div>
               ))
             )}
           </div>
+
+          {/* Footer */}
+          {wishlist.length > 0 && (
+            <div className="p-6 border-t border-white/10 bg-[#10131E]/80">
+              <Button
+                variant="secondary"
+                size="md"
+                to="/shop"
+                onClick={onClose}
+                fullWidth
+              >
+                Continue Exploring
+              </Button>
+            </div>
+          )}
         </aside>
       </div>
     </div>

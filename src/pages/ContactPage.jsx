@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Send,
   HelpCircle,
+  Sparkles,
 } from 'lucide-react'
 import Button from '../components/ui/Button'
 
@@ -41,7 +42,7 @@ const FAQ_ITEMS = [
     category: 'Order Questions',
     question: 'How does demo order creation and checkout work on this website?',
     answer:
-      'This website is an interactive frontend demonstration. You can browse silhouettes, curate a shopping bag, test coupon codes (such as AUREVA10 or WELCOME15), and experience our complete checkout flow. No real credit card details are ever collected, and no actual financial transactions or order fulfillment will occur.',
+      'This website is an interactive frontend demonstration. You can browse silhouettes, curate a shopping bag, test coupon codes (such as AUREVA15 or AUREVA10), and experience our complete checkout flow. No real credit card details are ever collected, and no actual financial transactions or order fulfillment will occur.',
   },
   {
     id: 'faq-care',
@@ -53,7 +54,6 @@ const FAQ_ITEMS = [
 ]
 
 export default function ContactPage() {
-  // Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,16 +61,12 @@ export default function ContactPage() {
     message: '',
   })
 
-  // Validation & Submission States
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Accordion State
   const [openFaqId, setOpenFaqId] = useState('faq-shipping')
 
-  // Validation function
   const validateField = (name, value) => {
     const val = (value || '').trim()
     switch (name) {
@@ -114,11 +110,9 @@ export default function ContactPage() {
   const handleSubmit = (e) => {
     e.preventDefault()
 
-    // Mark all touched
     const allTouched = { name: true, email: true, subject: true, message: true }
     setTouched(allTouched)
 
-    // Validate all
     const newErrors = {
       name: validateField('name', formData.name),
       email: validateField('email', formData.email),
@@ -160,23 +154,21 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="space-y-24 sm:space-y-32 py-6 sm:py-12">
-      {/* =========================================================================
-          SECTION 1: Page Header & Concierge Intro
-          ========================================================================= */}
+    <div className="space-y-24 sm:space-y-32 py-6 sm:py-12 text-white">
+      {/* Page Header & Concierge Intro */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-[#171717]/15 pb-8 sm:pb-12">
+        <div className="border-b border-white/10 pb-8 sm:pb-12">
           {/* Breadcrumb & Overline */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pb-6 border-b border-[#171717]/10 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pb-6 border-b border-white/10 mb-8">
             <div>
-              <span className="tag-overline text-[#6D202D]">CLIENT CONCIERGE & ATELIER</span>
-              <p className="text-xs uppercase tracking-[0.25em] text-[#171717]/60 font-mono mt-0.5">
+              <span className="tag-overline text-[#D4AF37] font-mono">CLIENT CONCIERGE & ATELIER</span>
+              <p className="text-xs uppercase tracking-[0.25em] text-gray-400 font-mono mt-0.5">
                 PARIS • TOKYO • NEW YORK DIRECT DISPATCH
               </p>
             </div>
             <Link
               to="/shop"
-              className="text-xs uppercase tracking-[0.2em] font-medium text-[#171717]/70 hover:text-[#6D202D] transition-colors inline-flex items-center gap-1"
+              className="text-xs uppercase tracking-[0.2em] font-medium text-[#D4AF37] hover:text-white transition-colors inline-flex items-center gap-1 font-mono"
             >
               <span>Explore The Collection</span>
               <ArrowRight size={13} />
@@ -185,13 +177,13 @@ export default function ContactPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
             <div className="lg:col-span-8 space-y-3">
-              <h1 className="editorial-title text-4xl sm:text-6xl lg:text-7xl font-serif text-[#171717]">
+              <h1 className="editorial-title text-4xl sm:text-6xl lg:text-7xl font-serif text-white">
                 Atelier Inquiries & <br />
-                <span className="italic font-light text-[#6D202D]">Concierge Service.</span>
+                <span className="italic font-light gold-gradient-text">Concierge Service.</span>
               </h1>
             </div>
             <div className="lg:col-span-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-[#171717]/70 leading-relaxed font-sans border-l-2 border-[#6D202D] pl-4">
+              <p className="text-xs uppercase tracking-[0.22em] text-gray-300 leading-relaxed font-sans border-l-2 border-[#D4AF37] pl-4 font-mono">
                 Whether arranging a bespoke fitting consultation, requesting guidance on garment proportions, or asking questions about our collection, our team is at your disposal.
               </p>
             </div>
@@ -199,9 +191,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* =========================================================================
-          SECTION 2: Main Interactive Contact Form & Studio Details
-          ========================================================================= */}
+      {/* Main Interactive Contact Form & Studio Details */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           {/* Left Column: Contact Form */}
@@ -209,45 +199,45 @@ export default function ContactPage() {
             {submittedOrder ? (
               /* Success Feedback Panel */
               <div
-                className="bg-[#FAF8F5] border-2 border-[#171717] p-8 sm:p-12 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                className="glass-panel-gold bg-[#0E1018]/95 border border-[#D4AF37]/50 p-8 sm:p-12 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-xs shadow-2xl text-white"
                 role="status"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800">
+                  <div className="h-10 w-10 rounded-full glass-panel flex items-center justify-center text-[#D4AF37]">
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
-                    <span className="tag-overline text-[#6D202D]">DISPATCH RECEIVED</span>
-                    <h2 className="font-serif text-2xl sm:text-3xl text-[#171717]">
+                    <span className="tag-overline text-[#D4AF37] font-mono">DISPATCH RECEIVED</span>
+                    <h2 className="font-serif text-2xl sm:text-3xl text-white">
                       Inquiry Transmitted
                     </h2>
                   </div>
                 </div>
 
-                <div className="border-t border-b border-[#171717]/15 py-5 space-y-3 text-xs">
+                <div className="border-t border-b border-white/10 py-5 space-y-3 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#171717]/60 uppercase tracking-wider font-mono">Reference Dossier</span>
-                    <span className="font-mono font-bold text-[#171717]">{submittedOrder.ref}</span>
+                    <span className="text-gray-400 uppercase tracking-wider font-mono">Reference Dossier</span>
+                    <span className="font-mono font-bold text-[#D4AF37]">{submittedOrder.ref}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#171717]/60 uppercase tracking-wider font-mono">Client Name</span>
-                    <span className="font-serif font-medium text-[#171717]">{submittedOrder.name}</span>
+                    <span className="text-gray-400 uppercase tracking-wider font-mono">Client Name</span>
+                    <span className="font-serif font-medium text-white">{submittedOrder.name}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#171717]/60 uppercase tracking-wider font-mono">Contact Email</span>
-                    <span className="font-mono text-[#171717]">{submittedOrder.email}</span>
+                    <span className="text-gray-400 uppercase tracking-wider font-mono">Contact Email</span>
+                    <span className="font-mono text-white">{submittedOrder.email}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#171717]/60 uppercase tracking-wider font-mono">Subject</span>
-                    <span className="text-[#171717] font-medium">{submittedOrder.subject}</span>
+                    <span className="text-gray-400 uppercase tracking-wider font-mono">Subject</span>
+                    <span className="text-white font-medium">{submittedOrder.subject}</span>
                   </div>
                 </div>
 
-                <div className="p-4 bg-[#171717]/5 border border-[#171717]/10 space-y-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#6D202D] font-bold block">
+                <div className="p-4 glass-panel border border-white/10 space-y-1 rounded-xs">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold block">
                     [FRONTEND DEMONSTRATION NOTICE]
                   </span>
-                  <p className="text-xs text-[#171717]/70 leading-relaxed font-sans">
+                  <p className="text-xs text-gray-300 leading-relaxed font-sans">
                     Thank you, {submittedOrder.name}. Your demo message has been registered in the frontend session state. No live outbound email or third-party CRM was contacted.
                   </p>
                 </div>
@@ -262,14 +252,14 @@ export default function ContactPage() {
                 </div>
               </div>
             ) : (
-              /* Interactive Contact Form with Strict Validation */
-              <div className="bg-[#FAF8F5] border border-[#171717]/20 p-8 sm:p-12 space-y-8">
+              /* Interactive Contact Form */
+              <div className="glass-panel p-8 sm:p-12 space-y-8 rounded-xs border-white/10">
                 <div>
-                  <span className="tag-overline text-[#6D202D]">TRANSMIT AN INQUIRY</span>
-                  <h2 className="font-serif text-2xl sm:text-3xl text-[#171717] mt-1">
+                  <span className="tag-overline text-[#D4AF37] font-mono">TRANSMIT AN INQUIRY</span>
+                  <h2 className="font-serif text-2xl sm:text-3xl text-white mt-1">
                     Send A Message to Our Concierge
                   </h2>
-                  <p className="text-xs text-[#171717]/70 font-sans mt-1">
+                  <p className="text-xs text-gray-400 font-sans mt-1">
                     Please provide your inquiry details below. All fields marked with (*) are required.
                   </p>
                 </div>
@@ -281,9 +271,9 @@ export default function ContactPage() {
                     <div className="space-y-1.5">
                       <label
                         htmlFor="contact-name"
-                        className="text-[10px] uppercase tracking-widest text-[#171717] font-mono font-semibold block"
+                        className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold block"
                       >
-                        Full Name <span className="text-[#6D202D]">*</span>
+                        Full Name <span className="text-[#D4AF37]">*</span>
                       </label>
                       <input
                         id="contact-name"
@@ -294,14 +284,14 @@ export default function ContactPage() {
                         placeholder="e.g. Eleanor Vance"
                         aria-invalid={Boolean(errors.name && touched.name)}
                         aria-describedby={errors.name && touched.name ? 'error-name' : undefined}
-                        className={`w-full bg-[#F6F2EA] border p-3 text-xs tracking-wider text-[#171717] focus:outline-none transition-colors ${
+                        className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
                           errors.name && touched.name
-                            ? 'border-[#6D202D] focus:border-[#6D202D]'
-                            : 'border-[#171717]/25 focus:border-[#171717]'
+                            ? 'border-[#E57373]'
+                            : 'border-white/15 focus:border-[#D4AF37]'
                         }`}
                       />
                       {errors.name && touched.name && (
-                        <div id="error-name" className="flex items-center gap-1.5 text-xs text-[#6D202D] pt-1">
+                        <div id="error-name" className="flex items-center gap-1.5 text-xs text-[#E57373] pt-1 font-mono">
                           <AlertCircle size={13} className="shrink-0" />
                           <span>{errors.name}</span>
                         </div>
@@ -312,9 +302,9 @@ export default function ContactPage() {
                     <div className="space-y-1.5">
                       <label
                         htmlFor="contact-email"
-                        className="text-[10px] uppercase tracking-widest text-[#171717] font-mono font-semibold block"
+                        className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold block"
                       >
-                        Email Address <span className="text-[#6D202D]">*</span>
+                        Email Address <span className="text-[#D4AF37]">*</span>
                       </label>
                       <input
                         id="contact-email"
@@ -325,14 +315,14 @@ export default function ContactPage() {
                         placeholder="client@domain.com"
                         aria-invalid={Boolean(errors.email && touched.email)}
                         aria-describedby={errors.email && touched.email ? 'error-email' : undefined}
-                        className={`w-full bg-[#F6F2EA] border p-3 text-xs tracking-wider text-[#171717] focus:outline-none transition-colors ${
+                        className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
                           errors.email && touched.email
-                            ? 'border-[#6D202D] focus:border-[#6D202D]'
-                            : 'border-[#171717]/25 focus:border-[#171717]'
+                            ? 'border-[#E57373]'
+                            : 'border-white/15 focus:border-[#D4AF37]'
                         }`}
                       />
                       {errors.email && touched.email && (
-                        <div id="error-email" className="flex items-center gap-1.5 text-xs text-[#6D202D] pt-1">
+                        <div id="error-email" className="flex items-center gap-1.5 text-xs text-[#E57373] pt-1 font-mono">
                           <AlertCircle size={13} className="shrink-0" />
                           <span>{errors.email}</span>
                         </div>
@@ -344,9 +334,9 @@ export default function ContactPage() {
                   <div className="space-y-1.5">
                     <label
                       htmlFor="contact-subject"
-                      className="text-[10px] uppercase tracking-widest text-[#171717] font-mono font-semibold block"
+                      className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold block"
                     >
-                      Subject / Topic <span className="text-[#6D202D]">*</span>
+                      Subject / Topic <span className="text-[#D4AF37]">*</span>
                     </label>
                     <input
                       id="contact-subject"
@@ -357,14 +347,14 @@ export default function ContactPage() {
                       placeholder="e.g. Private Sizing Consultation / Cocoon Coat Question"
                       aria-invalid={Boolean(errors.subject && touched.subject)}
                       aria-describedby={errors.subject && touched.subject ? 'error-subject' : undefined}
-                      className={`w-full bg-[#F6F2EA] border p-3 text-xs tracking-wider text-[#171717] focus:outline-none transition-colors ${
+                      className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
                         errors.subject && touched.subject
-                          ? 'border-[#6D202D] focus:border-[#6D202D]'
-                          : 'border-[#171717]/25 focus:border-[#171717]'
+                          ? 'border-[#E57373]'
+                          : 'border-white/15 focus:border-[#D4AF37]'
                       }`}
                     />
                     {errors.subject && touched.subject && (
-                      <div id="error-subject" className="flex items-center gap-1.5 text-xs text-[#6D202D] pt-1">
+                      <div id="error-subject" className="flex items-center gap-1.5 text-xs text-[#E57373] pt-1 font-mono">
                         <AlertCircle size={13} className="shrink-0" />
                         <span>{errors.subject}</span>
                       </div>
@@ -375,9 +365,9 @@ export default function ContactPage() {
                   <div className="space-y-1.5">
                     <label
                       htmlFor="contact-message"
-                      className="text-[10px] uppercase tracking-widest text-[#171717] font-mono font-semibold block"
+                      className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold block"
                     >
-                      Message Details <span className="text-[#6D202D]">*</span>
+                      Message Details <span className="text-[#D4AF37]">*</span>
                     </label>
                     <textarea
                       id="contact-message"
@@ -388,14 +378,14 @@ export default function ContactPage() {
                       placeholder="Please describe your styling requirements, silhouettes of interest, or delivery questions..."
                       aria-invalid={Boolean(errors.message && touched.message)}
                       aria-describedby={errors.message && touched.message ? 'error-message' : undefined}
-                      className={`w-full bg-[#F6F2EA] border p-3 text-xs tracking-wider text-[#171717] focus:outline-none transition-colors ${
+                      className={`w-full bg-[#121522] border p-3 text-xs tracking-wider text-white focus:outline-none transition-colors ${
                         errors.message && touched.message
-                          ? 'border-[#6D202D] focus:border-[#6D202D]'
-                          : 'border-[#171717]/25 focus:border-[#171717]'
+                          ? 'border-[#E57373]'
+                          : 'border-white/15 focus:border-[#D4AF37]'
                       }`}
                     />
                     {errors.message && touched.message && (
-                      <div id="error-message" className="flex items-center gap-1.5 text-xs text-[#6D202D] pt-1">
+                      <div id="error-message" className="flex items-center gap-1.5 text-xs text-[#E57373] pt-1 font-mono">
                         <AlertCircle size={13} className="shrink-0" />
                         <span>{errors.message}</span>
                       </div>
@@ -411,7 +401,7 @@ export default function ContactPage() {
                       disabled={isSubmitting}
                       icon={isSubmitting ? undefined : Send}
                       iconPosition="right"
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto font-bold"
                     >
                       {isSubmitting ? 'TRANSMITTING...' : 'TRANSMIT INQUIRY'}
                     </Button>
@@ -421,19 +411,17 @@ export default function ContactPage() {
             )}
           </div>
 
-          {/* Right Column: Support Channels, Demo Email & Physical Coordinates */}
+          {/* Right Column: Support Channels & Hours */}
           <div className="lg:col-span-5 space-y-8">
-            {/* Demo Support Channels Card */}
-            <div className="border border-[#171717]/20 bg-[#FAF8F5] p-8 space-y-6">
-              <span className="tag-overline text-[#6D202D]">SUPPORT DIRECT DISPATCH</span>
-              <h3 className="font-serif text-2xl text-[#171717] border-b border-[#171717]/10 pb-4">
+            <div className="glass-panel-gold bg-[#0E1018]/90 p-8 space-y-6 rounded-xs border border-white/15">
+              <span className="tag-overline text-[#D4AF37] font-mono">SUPPORT DIRECT DISPATCH</span>
+              <h3 className="font-serif text-2xl text-white border-b border-white/10 pb-4">
                 Atelier Concierge Desk
               </h3>
 
-              <div className="space-y-5 text-xs">
-                {/* Clearly Labelled Demo Support Email */}
+              <div className="space-y-5 text-xs text-gray-300">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[#6D202D]">
+                  <div className="flex items-center gap-2 text-[#D4AF37]">
                     <Mail size={16} />
                     <span className="font-mono text-[10px] tracking-widest uppercase font-bold">
                       DEMO SUPPORT EMAIL
@@ -441,52 +429,50 @@ export default function ContactPage() {
                   </div>
                   <a
                     href="mailto:concierge@aureva-studios.demo"
-                    className="font-mono text-sm text-[#171717] hover:text-[#6D202D] underline block pt-0.5 transition-colors"
+                    className="font-mono text-sm text-white hover:text-[#D4AF37] underline block pt-0.5 transition-colors"
                   >
                     concierge@aureva-studios.demo
                   </a>
-                  <p className="text-[10px] text-[#171717]/60 font-mono uppercase tracking-wider">
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
                     [DEMO CONTACT — SIMULATED CLIENT INBOX]
                   </p>
                 </div>
 
-                {/* Demo Telephone */}
-                <div className="space-y-1 pt-3 border-t border-[#171717]/10">
-                  <div className="flex items-center gap-2 text-[#6D202D]">
+                <div className="space-y-1 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-2 text-[#D4AF37]">
                     <Phone size={16} />
                     <span className="font-mono text-[10px] tracking-widest uppercase font-bold">
                       DEMO SALON HOTLINE
                     </span>
                   </div>
-                  <p className="font-mono text-sm text-[#171717]">+33 (0)1 42 68 55 00</p>
-                  <p className="text-[10px] text-[#171717]/60 font-mono uppercase tracking-wider">
+                  <p className="font-mono text-sm text-white">+33 (0)1 42 68 55 00</p>
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
                     [DEMO DIRECT LINE • TUESDAY – SATURDAY]
                   </p>
                 </div>
 
-                {/* Operating Hours */}
-                <div className="space-y-1 pt-3 border-t border-[#171717]/10">
-                  <div className="flex items-center gap-2 text-[#6D202D]">
+                <div className="space-y-1 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-2 text-[#D4AF37]">
                     <Clock size={16} />
                     <span className="font-mono text-[10px] tracking-widest uppercase font-bold">
                       HOURS OF ATTENTION
                     </span>
                   </div>
-                  <p className="text-xs text-[#171717]/80">
+                  <p className="text-xs text-gray-300">
                     10:00 – 19:00 CET (Monday through Saturday)
                   </p>
-                  <p className="text-[10px] text-[#171717]/60">
+                  <p className="text-[10px] text-gray-500 font-mono">
                     Average response timeframe within one business day.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Social Media Links with Explicit Demo Indications */}
-            <div className="border border-[#171717]/20 bg-[#FAF8F5] p-8 space-y-4">
-              <span className="tag-overline text-[#6D202D]">STUDIO CHANNELS</span>
-              <h3 className="font-serif text-xl text-[#171717]">Digital Archives & Moodboards</h3>
-              <p className="text-xs text-[#171717]/70 font-sans leading-relaxed">
+            {/* Social Media Links */}
+            <div className="glass-panel p-8 space-y-4 rounded-xs border-white/10">
+              <span className="tag-overline text-[#D4AF37] font-mono">STUDIO CHANNELS</span>
+              <h3 className="font-serif text-xl text-white">Digital Archives & Moodboards</h3>
+              <p className="text-xs text-gray-400 font-sans leading-relaxed">
                 Connect with our creative studio dispatches and runway soundscape archives:
               </p>
 
@@ -495,138 +481,111 @@ export default function ContactPage() {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 bg-[#F6F2EA] border border-[#171717]/15 hover:border-[#6D202D] hover:text-[#6D202D] transition-colors group"
+                  className="flex items-center justify-between p-2.5 glass-panel border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors group"
                 >
                   <span className="font-serif font-medium">Instagram Studio Archives</span>
-                  <span className="font-mono text-[10px] text-[#6D202D] font-bold">[DEMO LINK]</span>
+                  <span className="font-mono text-[10px] text-[#D4AF37] font-bold">[DEMO LINK]</span>
                 </a>
 
                 <a
                   href="https://pinterest.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 bg-[#F6F2EA] border border-[#171717]/15 hover:border-[#6D202D] hover:text-[#6D202D] transition-colors group"
+                  className="flex items-center justify-between p-2.5 glass-panel border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors group"
                 >
                   <span className="font-serif font-medium">Pinterest Silhouette Moodboard</span>
-                  <span className="font-mono text-[10px] text-[#6D202D] font-bold">[DEMO LINK]</span>
+                  <span className="font-mono text-[10px] text-[#D4AF37] font-bold">[DEMO LINK]</span>
                 </a>
 
                 <a
                   href="https://x.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 bg-[#F6F2EA] border border-[#171717]/15 hover:border-[#6D202D] hover:text-[#6D202D] transition-colors group"
+                  className="flex items-center justify-between p-2.5 glass-panel border-white/10 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors group"
                 >
                   <span className="font-serif font-medium">X / Twitter Editorial Dispatch</span>
-                  <span className="font-mono text-[10px] text-[#6D202D] font-bold">[DEMO LINK]</span>
+                  <span className="font-mono text-[10px] text-[#D4AF37] font-bold">[DEMO LINK]</span>
                 </a>
-              </div>
-            </div>
-
-            {/* Link back to shop banner */}
-            <div className="bg-[#171717] text-[#F6F2EA] p-8 space-y-4">
-              <span className="tag-overline text-[#D8D0C4]">REPERTOIRE ACCESS</span>
-              <h3 className="font-serif text-2xl text-[#F6F2EA]">Ready to Explore?</h3>
-              <p className="text-xs text-[#F6F2EA]/75 leading-relaxed font-sans">
-                Browse our catalog of permanent outerwear, tailored separates, and leather accessories.
-              </p>
-              <div className="pt-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  to="/shop"
-                  className="text-[#F6F2EA] border-[#F6F2EA] hover:bg-[#F6F2EA] hover:text-[#171717]"
-                  icon={ArrowRight}
-                  iconPosition="right"
-                >
-                  Return to Repertoire
-                </Button>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* =========================================================================
-          SECTION 3: FAQ Accordion (Shipping, Returns, Sizing, Order Questions)
-          ========================================================================= */}
-      <section className="bg-[#FAF8F5] border-y border-[#171717]/15 py-20 sm:py-28">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center gap-2 p-2 bg-[#171717]/5 rounded-full mb-1">
-              <HelpCircle size={18} className="text-[#6D202D]" />
-            </div>
-            <span className="tag-overline text-[#6D202D] block">FREQUENT INQUIRIES</span>
-            <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-[#171717]">
-              Atelier Client Guide & FAQs
-            </h2>
-            <p className="text-xs text-[#171717]/70 uppercase tracking-widest max-w-md mx-auto font-sans">
-              Clear answers regarding shipping, complimentary returns, garment sizing and demo orders.
-            </p>
+      {/* FAQ Accordion in Liquid Glass */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 border-t border-white/10 pt-20">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 p-2 glass-panel-gold rounded-full mb-1">
+            <HelpCircle size={18} className="text-[#D4AF37]" />
           </div>
+          <span className="tag-overline text-[#D4AF37] block font-mono">FREQUENT INQUIRIES</span>
+          <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
+            Atelier Client Guide & FAQs
+          </h2>
+          <p className="text-xs text-gray-400 uppercase tracking-widest max-w-md mx-auto font-mono">
+            Clear answers regarding shipping, complimentary returns, garment sizing and demo orders.
+          </p>
+        </div>
 
-          {/* Accordion Container */}
-          <div className="space-y-4">
-            {FAQ_ITEMS.map((item) => {
-              const isOpen = openFaqId === item.id
-              return (
-                <div
-                  key={item.id}
-                  className={`border transition-colors ${
-                    isOpen ? 'border-[#171717] bg-[#F6F2EA]' : 'border-[#171717]/15 bg-[#FAF8F5] hover:border-[#171717]/40'
-                  }`}
-                >
-                  {/* Accordion Trigger Button */}
-                  <button
-                    type="button"
-                    onClick={() => toggleFaq(item.id)}
-                    aria-expanded={isOpen}
-                    aria-controls={`faq-answer-${item.id}`}
-                    className="w-full text-left p-6 sm:p-7 flex items-center justify-between gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6D202D]"
-                  >
-                    <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-[0.25em] font-mono text-[#6D202D] font-bold block">
-                        {item.category}
-                      </span>
-                      <h3 className="font-serif text-lg sm:text-xl text-[#171717] font-medium">
-                        {item.question}
-                      </h3>
-                    </div>
-                    <div
-                      className={`p-1.5 rounded-full border border-[#171717]/20 transition-transform duration-200 shrink-0 ${
-                        isOpen ? 'rotate-180 bg-[#171717] text-[#F6F2EA]' : 'text-[#171717]'
-                      }`}
-                    >
-                      <ChevronDown size={16} />
-                    </div>
-                  </button>
-
-                  {/* Accordion Content */}
-                  {isOpen && (
-                    <div
-                      id={`faq-answer-${item.id}`}
-                      className="px-6 pb-6 sm:px-7 sm:pb-7 text-xs sm:text-sm text-[#171717]/80 font-sans leading-relaxed border-t border-[#171717]/10 pt-4 animate-in fade-in duration-200"
-                    >
-                      <p>{item.answer}</p>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="text-center pt-4">
-            <p className="text-xs text-[#171717]/60 font-sans">
-              Have an uncommon request?{' '}
-              <a
-                href="mailto:concierge@aureva-studios.demo"
-                className="underline text-[#6D202D] font-medium hover:text-[#171717]"
+        {/* Accordion Container */}
+        <div className="space-y-4">
+          {FAQ_ITEMS.map((item) => {
+            const isOpen = openFaqId === item.id
+            return (
+              <div
+                key={item.id}
+                className={`border transition-colors rounded-xs ${
+                  isOpen ? 'border-[#D4AF37]/60 glass-panel-gold' : 'border-white/10 glass-panel hover:border-white/30'
+                }`}
               >
-                Inquire directly with our Concierge Desk
-              </a>
-              .
-            </p>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => toggleFaq(item.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${item.id}`}
+                  className="w-full text-left p-6 sm:p-7 flex items-center justify-between gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37]"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[9px] uppercase tracking-[0.25em] font-mono text-[#D4AF37] font-bold block">
+                      {item.category}
+                    </span>
+                    <h3 className="font-serif text-lg sm:text-xl text-white font-medium">
+                      {item.question}
+                    </h3>
+                  </div>
+                  <div
+                    className={`p-1.5 rounded-full border border-white/20 transition-transform duration-200 shrink-0 ${
+                      isOpen ? 'rotate-180 bg-[#D4AF37] text-[#08090D]' : 'text-gray-300'
+                    }`}
+                  >
+                    <ChevronDown size={16} />
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div
+                    id={`faq-answer-${item.id}`}
+                    className="px-6 pb-6 sm:px-7 sm:pb-7 text-xs sm:text-sm text-gray-300 font-sans leading-relaxed border-t border-white/10 pt-4 animate-in fade-in duration-200 font-light"
+                  >
+                    <p>{item.answer}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="text-center pt-4">
+          <p className="text-xs text-gray-400 font-mono">
+            Have an uncommon request?{' '}
+            <a
+              href="mailto:concierge@aureva-studios.demo"
+              className="underline text-[#D4AF37] font-medium hover:text-white"
+            >
+              Inquire directly with our Concierge Desk
+            </a>
+            .
+          </p>
         </div>
       </section>
     </div>

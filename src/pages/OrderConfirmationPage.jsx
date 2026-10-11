@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
-import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer } from 'lucide-react'
+import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer, Sparkles } from 'lucide-react'
 import { formatCurrency } from '../utils/formatters'
 import Button from '../components/ui/Button'
 
@@ -9,12 +9,9 @@ export default function OrderConfirmationPage() {
   const { orderId } = useParams()
 
   const [order] = useState(() => {
-    // 1. Check navigation state
     if (location.state && location.state.order) {
       return location.state.order
     }
-
-    // 2. Check localStorage for last order
     try {
       const saved = typeof window !== 'undefined' ? window.localStorage.getItem('aureva_last_order_v1') : null
       if (saved) {
@@ -31,15 +28,15 @@ export default function OrderConfirmationPage() {
 
   if (!order) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32 text-center space-y-6">
-        <div className="inline-flex p-4 rounded-full bg-[#171717]/5 mb-2">
-          <ShoppingBag size={48} className="text-[#171717]/40 stroke-[1.2]" />
+      <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32 text-center space-y-6 text-white">
+        <div className="inline-flex p-4 rounded-full glass-panel mb-2">
+          <ShoppingBag size={48} className="text-gray-500 stroke-[1.2]" />
         </div>
-        <span className="tag-overline text-[#6D202D] block">ORDER ARCHIVE</span>
-        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-[#171717]">
+        <span className="tag-overline text-[#D4AF37] block font-mono">ORDER ARCHIVE</span>
+        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
           No Active Order Found
         </h1>
-        <p className="text-xs text-[#171717]/60 tracking-wider max-w-md mx-auto leading-relaxed">
+        <p className="text-xs text-gray-400 tracking-wider max-w-md mx-auto leading-relaxed font-mono">
           There are no recently finalized demo orders recorded in your current browser session. Explore our catalog to place a selection.
         </p>
         <div className="pt-6">
@@ -62,53 +59,53 @@ export default function OrderConfirmationPage() {
   })
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12 text-white">
       {/* Top Confirmation Header */}
       <div className="text-center space-y-4 max-w-xl mx-auto">
-        <div className="inline-flex p-3 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <CheckCircle2 size={40} className="stroke-[1.6]" />
+        <div className="inline-flex p-3 rounded-full glass-panel-gold border-[#D4AF37]/50 text-[#D4AF37]">
+          <CheckCircle2 size={40} className="stroke-[1.8]" />
         </div>
-        <span className="tag-overline text-[#6D202D] block">DEMO SELECTION CONFIRMED</span>
-        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-[#171717]">
+        <span className="tag-overline text-[#D4AF37] block font-mono">DEMO SELECTION CONFIRMED</span>
+        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
           Thank You for Your Selection
         </h1>
-        <p className="text-xs text-[#171717]/70 leading-relaxed font-sans">
-          Your pieces have been allocated from the atelier archive. An official dispatch dossier will be sent to <strong className="text-[#171717]">{customer.email}</strong>.
+        <p className="text-xs text-gray-300 leading-relaxed font-sans">
+          Your pieces have been allocated from the atelier archive. An official dispatch dossier will be sent to <strong className="text-white font-mono">{customer.email}</strong>.
         </p>
       </div>
 
       {/* Demo Prototype Notice Banner */}
-      <div className="bg-[#FAF8F5] border border-[#171717]/15 p-4 sm:p-5 text-xs text-[#171717]/80 flex items-start gap-3">
-        <ShieldCheck size={18} className="text-[#6D202D] shrink-0 mt-0.5" />
+      <div className="glass-panel p-4 sm:p-5 text-xs text-gray-300 flex items-start gap-3 rounded-xs border-white/10">
+        <ShieldCheck size={18} className="text-[#D4AF37] shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold uppercase tracking-wider text-[11px] text-[#171717]">
+          <p className="font-semibold uppercase tracking-wider text-[11px] text-[#D4AF37] font-mono">
             Frontend Demonstration Notice
           </p>
-          <p className="text-[11px] leading-relaxed text-[#171717]/70">
+          <p className="text-[11px] leading-relaxed text-gray-400">
             This transaction was conducted in demonstration mode. No real payment card details were collected or processed, and no commercial shipment has been dispatched.
           </p>
         </div>
       </div>
 
       {/* Order Reference Header Box */}
-      <div className="border border-[#171717]/20 bg-[#FAF8F5] p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xs border border-white/15">
         <div>
-          <span className="text-[10px] uppercase tracking-widest text-[#171717]/60 font-mono block">
+          <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-mono block">
             DEMO ORDER REFERENCE
           </span>
-          <span className="font-mono text-xl sm:text-2xl font-bold text-[#171717] tracking-wider block mt-0.5">
+          <span className="font-mono text-xl sm:text-2xl font-bold text-white tracking-wider block mt-0.5">
             {orderNumber}
           </span>
-          <span className="text-[11px] text-[#171717]/60 font-mono block mt-1">
+          <span className="text-[11px] text-gray-400 font-mono block mt-1">
             Logged on: {formattedDate}
           </span>
         </div>
 
         <div className="sm:text-right">
-          <span className="text-[10px] uppercase tracking-widest text-[#171717]/60 font-mono block">
+          <span className="text-[10px] uppercase tracking-widest text-gray-400 font-mono block">
             FULFILLMENT STATUS
           </span>
-          <span className="inline-block bg-[#171717] text-[#F6F2EA] px-3 py-1 text-[10px] font-mono uppercase tracking-widest mt-1">
+          <span className="inline-block gold-gradient-bg text-[#08090D] font-bold px-3 py-1 text-[10px] font-mono uppercase tracking-widest mt-1">
             In Atelier Preparation
           </span>
         </div>
@@ -119,35 +116,35 @@ export default function OrderConfirmationPage() {
         {/* Left Column: Customer & Shipping Summary */}
         <div className="md:col-span-5 space-y-6">
           {/* Shipping Address */}
-          <div className="border border-[#171717]/15 p-6 bg-[#FAF8F5] space-y-3 text-xs">
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#171717]/60 font-semibold border-b border-[#171717]/10 pb-2">
+          <div className="glass-panel p-6 space-y-3 text-xs rounded-xs border-white/10">
+            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
               Delivery Destination
             </h3>
-            <div className="space-y-1.5 text-[#171717]/80">
-              <p className="font-semibold text-sm text-[#171717]">{customer.fullName}</p>
+            <div className="space-y-1.5 text-gray-300">
+              <p className="font-semibold text-sm text-white">{customer.fullName}</p>
               <p>{customer.address}</p>
               <p>{customer.city}, {customer.state} — {customer.postalCode}</p>
-              <p className="text-[10px] uppercase tracking-wider text-[#171717]/60 font-mono">India</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">India</p>
             </div>
-            <div className="pt-3 border-t border-[#171717]/10 space-y-1 text-[#171717]/70">
+            <div className="pt-3 border-t border-white/10 space-y-1 text-gray-400 font-mono">
               <p className="flex items-center gap-2">
-                <Mail size={13} />
+                <Mail size={13} className="text-[#D4AF37]" />
                 <span>{customer.email}</span>
               </p>
               <p className="flex items-center gap-2">
-                <Phone size={13} />
+                <Phone size={13} className="text-[#D4AF37]" />
                 <span>+91 {customer.phone}</span>
               </p>
             </div>
           </div>
 
           {/* Logistics Courier Notice */}
-          <div className="border border-[#171717]/15 p-5 bg-[#FAF8F5] space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-[#6D202D]">
+          <div className="glass-panel p-5 space-y-2 text-xs rounded-xs border-white/10">
+            <div className="flex items-center gap-2 text-[#D4AF37]">
               <Truck size={16} />
-              <span className="font-semibold uppercase tracking-wider text-[11px]">Courier Transit</span>
+              <span className="font-semibold uppercase tracking-wider text-[11px] font-mono">Courier Transit</span>
             </div>
-            <p className="text-[#171717]/70 text-[11px] leading-relaxed">
+            <p className="text-gray-400 text-[11px] leading-relaxed font-mono">
               Dispatched with insured air courier. Estimated arrival in 2–4 business days. Signature required on handover.
             </p>
           </div>
@@ -155,16 +152,16 @@ export default function OrderConfirmationPage() {
 
         {/* Right Column: Ordered Items & Financial Breakdown */}
         <div className="md:col-span-7 space-y-6">
-          <div className="border border-[#171717]/15 p-6 sm:p-8 bg-[#FAF8F5] space-y-6">
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#171717]/60 font-semibold border-b border-[#171717]/10 pb-2">
+          <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 space-y-6 rounded-xs border border-white/15">
+            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
               Allocated Pieces ({summary.totalItems})
             </h3>
 
             {/* Items List */}
-            <div className="divide-y divide-[#171717]/10">
+            <div className="divide-y divide-white/10">
               {items.map((item, idx) => (
                 <div key={idx} className="py-4 flex gap-4 items-center">
-                  <div className="w-16 h-20 bg-[#ECE5D8] border border-[#171717]/10 overflow-hidden shrink-0">
+                  <div className="w-16 h-20 bg-[#121522] border border-white/10 overflow-hidden shrink-0">
                     <img
                       src={item.product.images ? item.product.images[0] : ''}
                       alt={item.product.name}
@@ -172,18 +169,18 @@ export default function OrderConfirmationPage() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-serif text-base text-[#171717] truncate">
+                    <h4 className="font-serif text-base text-white truncate">
                       {item.product.name}
                     </h4>
-                    <p className="text-[11px] text-[#171717]/60 font-mono">
+                    <p className="text-[11px] text-gray-400 font-mono">
                       Size: {item.size} • Color: {item.color} • Qty: {item.quantity}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="font-mono text-xs font-semibold text-[#171717] block">
+                    <span className="font-serif text-sm font-semibold text-white block">
                       {formatCurrency(item.product.price * item.quantity)}
                     </span>
-                    <span className="text-[10px] text-[#171717]/50 font-mono">
+                    <span className="text-[10px] text-gray-500 font-mono">
                       {formatCurrency(item.product.price)} each
                     </span>
                   </div>
@@ -192,33 +189,33 @@ export default function OrderConfirmationPage() {
             </div>
 
             {/* Financial Breakdown */}
-            <div className="border-t border-[#171717]/15 pt-4 space-y-2.5 text-xs text-[#171717]/80">
+            <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
               <div className="flex justify-between">
                 <span>Merchandise Subtotal</span>
-                <span className="font-mono font-semibold text-[#171717]">{formatCurrency(summary.subtotal)}</span>
+                <span className="font-serif text-base font-semibold text-white">{formatCurrency(summary.subtotal)}</span>
               </div>
 
               {summary.discount > 0 && (
-                <div className="flex justify-between text-[#6D202D] font-medium">
+                <div className="flex justify-between text-[#D4AF37] font-medium font-mono">
                   <span>Privilege Savings ({summary.couponCode})</span>
-                  <span className="font-mono">-{formatCurrency(summary.discount)}</span>
+                  <span>-{formatCurrency(summary.discount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span>White-Glove Courier Delivery</span>
-                <span className="font-mono">
+                <span className="font-mono text-xs">
                   {summary.shipping === 0 ? (
-                    <span className="text-emerald-700 font-semibold uppercase text-[11px]">Complimentary</span>
+                    <span className="text-emerald-400 font-semibold uppercase text-[11px]">Complimentary</span>
                   ) : (
                     formatCurrency(summary.shipping)
                   )}
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-[#171717]/15 flex justify-between items-baseline text-base font-semibold text-[#171717]">
+              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-base font-semibold text-white">
                 <span>Total Authorized</span>
-                <span className="font-mono text-xl">{formatCurrency(summary.grandTotal)}</span>
+                <span className="font-serif text-2xl text-white">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>
           </div>
@@ -233,7 +230,7 @@ export default function OrderConfirmationPage() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex items-center gap-2 border border-[#171717]/30 px-6 py-3.5 text-xs uppercase tracking-widest text-[#171717] hover:bg-[#171717] hover:text-[#F6F2EA] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 glass-panel border-white/20 px-6 py-3.5 text-xs uppercase tracking-widest text-gray-300 hover:text-white hover:border-[#D4AF37] transition-colors cursor-pointer font-mono"
         >
           <Printer size={14} />
           <span>Print Order Dossier</span>
