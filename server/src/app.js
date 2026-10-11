@@ -3,6 +3,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import config from './config/env.js'
 import apiRouter from './routes/index.js'
+import requestLogger from './middleware/requestLogger.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 
 const app = express()
@@ -29,23 +30,27 @@ app.use(express.json({ limit: '5mb' }))
 app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 app.use(cookieParser(config.cookieSecret))
 
-// 3. Root API Welcome Route
+// 3. HTTP Request Audit & Performance Logger
+app.use(requestLogger)
+
+// 4. Root API Welcome Route
 app.get('/', (req, res) => {
   res.json({
     name: 'AUREVA Haute Couture REST API',
     tagline: 'Style without boundaries.',
-    documentation: '/api/health',
+    sitemap: '/api',
+    health: '/api/health',
     version: '1.0.0',
   })
 })
 
-// 4. Mount API Routes under /api
+// 5. Mount API Routes under /api
 app.use('/api', apiRouter)
 
-// 5. 404 Resource Handler
+// 6. 404 Resource Handler
 app.use(notFoundHandler)
 
-// 6. Centralized Error Handler
+// 7. Centralized Error Handler
 app.use(errorHandler)
 
 export default app

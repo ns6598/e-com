@@ -1,78 +1,28 @@
-import { prisma, dbStatus } from '../config/db.js'
+import productService from '../services/productService.js'
 import { successResponse, errorResponse } from '../utils/response.js'
-import { PRODUCTS } from '../data/products.js'
 
 /**
- * Get all products with optional filters
+ * Get all products with optional filters, search, and sorting
  * Endpoint: GET /api/products
  */
 export async function getProducts(req, res, next) {
   try {
-    const { department, category, search, featured, isNew } = req.query
+    const { department, category, search, featured, isNew, sort, minPrice, maxPrice } = req.query
 
-    // 1. If database is connected, attempt Prisma query
-    if (dbStatus.isConnected && prisma) {
-      try {
-        const where = {}
-        if (department && department !== 'All') {
-          where.department = { equals: department, mode: 'insensitive' }
-        }
-        if (category && category !== 'All') {
-          where.category = { equals: category, mode: 'insensitive' }
-        }
-        if (featured === 'true') {
-          where.isFeatured = true
-        }
-        if (isNew === 'true') {
-          where.isNew = true
-        }
-        if (search) {
-          where.OR = [
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-          ]
-        }
-
-        const dbProducts = await prisma.product.findMany({ where })
-        if (dbProducts && dbProducts.length > 0) {
-          return successResponse(res, {
-            message: 'Products retrieved from database',
-            data: dbProducts,
-          })
-        }
-      } catch (err) {
-        console.warn('[Products Controller] Database query fallback:', err.message)
-      }
-    }
-
-    // 2. Fallback to centralized catalog data
-    let filtered = [...PRODUCTS]
-
-    if (department && department !== 'All') {
-      filtered = filtered.filter((p) => p.department.toLowerCase() === department.toLowerCase())
-    }
-    if (category && category !== 'All') {
-      filtered = filtered.filter((p) => p.category.toLowerCase() === category.toLowerCase())
-    }
-    if (featured === 'true') {
-      filtered = filtered.filter((p) => p.isFeatured)
-    }
-    if (isNew === 'true') {
-      filtered = filtered.filter((p) => p.isNew)
-    }
-    if (search) {
-      const q = search.toLowerCase()
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      )
-    }
+    const result = await productService.list({
+      department,
+      category,
+      search,
+      featured,
+      isNew,
+      sort,
+      minPrice,
+      maxPrice,
+    })
 
     return successResponse(res, {
-      message: 'Products retrieved successfully',
-      data: filtered,
+      message: `Retrieved ${result.total} silhouettes`,
+      data: result.items,
     })
   } catch (error) {
     next(error)
@@ -86,27 +36,11 @@ export async function getProducts(req, res, next) {
 export async function getProductById(req, res, next) {
   try {
     const { id } = req.params
+    const result = await productService.getById(id)
 
-    if (dbStatus.isConnected && prisma) {
-      try {
-        const product = await prisma.product.findUnique({
-          where: { id },
-        })
-        if (product) {
-          return successResponse(res, {
-            message: 'Product retrieved from database',
-            data: product,
-          })
-        }
-      } catch (err) {
-        console.warn('[Products Controller] Database query fallback:', err.message)
-      }
-    }
-
-    const staticProduct = PRODUCTS.find((p) => p.id === id)
-    if (!staticProduct) {
+    if (!result.product) {
       return errorResponse(res, {
-        message: `Product with ID '${id}' not found in repertoire`,
+        message: `Product '${id}' not found in active repertoire`,
         code: 'PRODUCT_NOT_FOUND',
         statusCode: 404,
       })
@@ -114,9 +48,21 @@ export async function getProductById(req, res, next) {
 
     return successResponse(res, {
       message: 'Product retrieved successfully',
-      data: staticProduct,
+      data: result.product,
     })
   } catch (error) {
     next(error)
   }
+}
+
+/**
+ * Get departments and categories taxonomy
+ * Endpoint: GET /api/products/meta/categories
+ */
+export function getProductTaxonomy(req, res) {
+  const taxonomy = productService.getCategories()
+  return successResponse(res, {
+    message: 'Product taxonomy retrieved successfully',
+    data: taxonomy,
+  })
 }
