@@ -7,20 +7,42 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+client/node_modules
+server/node_modules
+
+# Production Build Outputs
 dist
 dist-ssr
+client/dist
 *.local
+
+# Environment & Sensitive Credentials
 .env
 .env.*
 .env*.local
+client/.env
+client/.env*.local
+server/.env
+server/.env*.local
 
-# Editor directories and files
+# Preserve example templates
+!.env.example
+!client/.env.example
+!server/.env.example
+
+# Prisma artifacts & SQLite fallback
+server/prisma/*.db
+server/prisma/*.db-journal
+
+# Editor and OS system files
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
