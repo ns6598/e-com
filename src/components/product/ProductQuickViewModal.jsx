@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { X, Heart, Plus, Minus, Check, Sparkles, ZoomIn, Eye, ArrowRight, ShieldCheck } from 'lucide-react'
+import { X, Heart, Plus, Minus, Check, Sparkles, ZoomIn, Eye, ArrowRight, ShieldCheck, Ruler } from 'lucide-react'
 import { formatCurrency, calculateDiscountPercentage } from '../../utils/formatters'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import Button from '../ui/Button'
+import SizeChartModal from '../common/SizeChartModal'
 
 export default function ProductQuickViewModal({ product, isOpen, onClose }) {
   const { addToCart } = useCart()
@@ -17,6 +18,7 @@ export default function ProductQuickViewModal({ product, isOpen, onClose }) {
   const [isZooming, setIsZooming] = useState(false)
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
   const [addedSuccess, setAddedSuccess] = useState(false)
+  const [sizeChartOpen, setSizeChartOpen] = useState(false)
 
   const imageContainerRef = useRef(null)
 
@@ -262,7 +264,14 @@ export default function ProductQuickViewModal({ product, isOpen, onClose }) {
                     <span className="uppercase tracking-widest text-gray-400 font-mono text-[10px]">
                       ATELIER SIZING: <span className="text-white font-semibold">{selectedSize}</span>
                     </span>
-                    <span className="text-[10px] text-gray-400 tracking-wider">True to European fit</span>
+                    <button
+                      type="button"
+                      onClick={() => setSizeChartOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] text-[#D4AF37] hover:underline cursor-pointer font-mono"
+                    >
+                      <Ruler size={12} />
+                      <span>Size Guide</span>
+                    </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((s) => (
@@ -368,6 +377,13 @@ export default function ProductQuickViewModal({ product, isOpen, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Interactive Size Chart Modal */}
+      <SizeChartModal
+        isOpen={sizeChartOpen}
+        onClose={() => setSizeChartOpen(false)}
+        initialDepartment={product?.department || product?.category || 'Women'}
+      />
     </div>
   )
 }

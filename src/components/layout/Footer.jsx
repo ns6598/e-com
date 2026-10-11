@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, Music, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Music, Sparkles, Ruler } from 'lucide-react'
 import NewsletterForm from '../common/NewsletterForm'
+import SizeChartModal from '../common/SizeChartModal'
 
 function InstagramIcon({ size = 18, className = '' }) {
   return (
@@ -62,6 +63,8 @@ function PinterestIcon({ size = 18, className = '' }) {
 }
 
 export default function Footer() {
+  const [sizeChartOpen, setSizeChartOpen] = useState(false)
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -251,6 +254,16 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-gray-400">
               <li>
+                <button
+                  type="button"
+                  onClick={() => setSizeChartOpen(true)}
+                  className="hover:text-white transition-colors text-left cursor-pointer flex items-center gap-1.5"
+                >
+                  <Ruler size={13} className="text-[#D4AF37]" />
+                  <span>Size Chart & Fit Matrix</span>
+                </button>
+              </li>
+              <li>
                 <Link to="/contact" className="hover:text-white transition-colors">
                   Private Salon Inquiries
                 </Link>
@@ -312,6 +325,9 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Persistent Atelier Size Chart Modal */}
+      <SizeChartModal isOpen={sizeChartOpen} onClose={() => setSizeChartOpen(false)} />
     </footer>
   )
 }

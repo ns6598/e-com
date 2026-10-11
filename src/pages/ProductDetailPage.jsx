@@ -20,6 +20,7 @@ import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 import Button from '../components/ui/Button'
 import ProductCard from '../components/product/ProductCard'
+import SizeChartModal from '../components/common/SizeChartModal'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
@@ -412,7 +413,7 @@ export default function ProductDetailPage() {
               <Truck size={16} className="text-[#D4AF37] shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-white uppercase tracking-wider text-[10px] font-mono">White-Glove Courier</p>
-                <p className="text-gray-400 text-[11px] mt-0.5">Complimentary express shipping on orders over ₹25,000.</p>
+                <p className="text-gray-400 text-[11px] mt-0.5">Complimentary express shipping on orders over ₹2,999.</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
@@ -560,170 +561,12 @@ export default function ProductDetailPage() {
         </section>
       )}
 
-      {/* Size Guide Modal */}
-      {sizeGuideOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Size Guide Chart">
-          <div
-            className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md transition-opacity"
-            onClick={() => setSizeGuideOpen(false)}
-            aria-hidden="true"
-          />
-
-          <div className="min-h-full flex items-center justify-center p-4">
-            <div className="relative glass-panel-gold bg-[#0E1018]/98 border border-white/15 max-w-2xl w-full p-6 sm:p-10 shadow-2xl space-y-6 text-white rounded-xs">
-              {/* Modal Header */}
-              <div className="flex items-start justify-between border-b border-white/10 pb-4">
-                <div>
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono">
-                    ATELIER MEASUREMENTS
-                  </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl font-light mt-0.5 text-white">
-                    Silhouette Size Guide
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSizeGuideOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-white cursor-pointer"
-                  aria-label="Close size guide"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Unit Toggle */}
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400 font-mono">Measurement Units:</span>
-                <div className="inline-flex border border-white/20 p-0.5 bg-[#121522]">
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideUnit('cm')}
-                    className={`px-3 py-1 font-mono uppercase tracking-wider text-[11px] cursor-pointer ${
-                      sizeGuideUnit === 'cm'
-                        ? 'gold-gradient-bg text-[#08090D] font-bold'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Centimeters (cm)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSizeGuideUnit('in')}
-                    className={`px-3 py-1 font-mono uppercase tracking-wider text-[11px] cursor-pointer ${
-                      sizeGuideUnit === 'in'
-                        ? 'gold-gradient-bg text-[#08090D] font-bold'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Inches (in)
-                  </button>
-                </div>
-              </div>
-
-              {/* Size Measurements Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead>
-                    <tr className="border-b border-white/20 text-[#D4AF37]">
-                      <th className="py-2.5 font-medium">Size</th>
-                      <th className="py-2.5 font-medium">Bust/Chest</th>
-                      <th className="py-2.5 font-medium">Waist</th>
-                      <th className="py-2.5 font-medium">Hips</th>
-                      <th className="py-2.5 font-medium">Sleeve</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10 text-gray-300">
-                    {sizeGuideUnit === 'cm' ? (
-                      <>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">XS</td>
-                          <td className="py-2.5">84–88</td>
-                          <td className="py-2.5">66–70</td>
-                          <td className="py-2.5">90–94</td>
-                          <td className="py-2.5">81</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">S</td>
-                          <td className="py-2.5">88–94</td>
-                          <td className="py-2.5">70–76</td>
-                          <td className="py-2.5">94–100</td>
-                          <td className="py-2.5">83</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">M</td>
-                          <td className="py-2.5">94–102</td>
-                          <td className="py-2.5">76–84</td>
-                          <td className="py-2.5">100–108</td>
-                          <td className="py-2.5">85</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">L</td>
-                          <td className="py-2.5">102–110</td>
-                          <td className="py-2.5">84–92</td>
-                          <td className="py-2.5">108–116</td>
-                          <td className="py-2.5">87</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">XL</td>
-                          <td className="py-2.5">110–118</td>
-                          <td className="py-2.5">92–100</td>
-                          <td className="py-2.5">116–124</td>
-                          <td className="py-2.5">89</td>
-                        </tr>
-                      </>
-                    ) : (
-                      <>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">XS</td>
-                          <td className="py-2.5">33–34.5</td>
-                          <td className="py-2.5">26–27.5</td>
-                          <td className="py-2.5">35.5–37</td>
-                          <td className="py-2.5">31.8</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">S</td>
-                          <td className="py-2.5">34.5–37</td>
-                          <td className="py-2.5">27.5–30</td>
-                          <td className="py-2.5">37–39.5</td>
-                          <td className="py-2.5">32.6</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">M</td>
-                          <td className="py-2.5">37–40</td>
-                          <td className="py-2.5">30–33</td>
-                          <td className="py-2.5">39.5–42.5</td>
-                          <td className="py-2.5">33.4</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">L</td>
-                          <td className="py-2.5">40–43.5</td>
-                          <td className="py-2.5">33–36</td>
-                          <td className="py-2.5">42.5–45.5</td>
-                          <td className="py-2.5">34.2</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2.5 font-bold text-white">XL</td>
-                          <td className="py-2.5">43.5–46.5</td>
-                          <td className="py-2.5">36–39.5</td>
-                          <td className="py-2.5">45.5–48.8</td>
-                          <td className="py-2.5">35.0</td>
-                        </tr>
-                      </>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Fitting Philosophy Note */}
-              <div className="glass-panel p-4 border border-white/10 text-xs font-serif leading-relaxed text-gray-300">
-                <p>
-                  <strong className="text-white">Atelier Fitting Guidance:</strong> AUREVA garments are cut with deliberate architectural ease. For an oversized runway drape, order your true size. For a tailored, closer silhouette, we advise taking one size down.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Interactive Atelier Size Guide Modal */}
+      <SizeChartModal
+        isOpen={sizeGuideOpen}
+        onClose={() => setSizeGuideOpen(false)}
+        initialDepartment={product?.department || product?.category || 'Women'}
+      />
     </div>
   )
 }

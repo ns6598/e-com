@@ -21,7 +21,11 @@ export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [selectedSize, setSelectedSize] = useState('All')
   const [selectedColor, setSelectedColor] = useState('All')
-  const [priceRange, setPriceRange] = useState(90000)
+  // Calculate dynamic catalog price bounds
+  const minCatalogPrice = useMemo(() => Math.min(...PRODUCTS.map((p) => p.price)), [])
+  const maxCatalogPrice = useMemo(() => Math.max(...PRODUCTS.map((p) => p.price)), [])
+
+  const [priceRange, setPriceRange] = useState(maxCatalogPrice)
   const [saleOnly, setSaleOnly] = useState(initialFilter === 'sale')
   const [newOnly, setNewOnly] = useState(initialFilter === 'new' || initialFilter === 'new-arrivals')
   const [searchQuery, setSearchQuery] = useState(initialSearch)
@@ -30,10 +34,6 @@ export default function ShopPage() {
   // Mobile filter drawer state & Quick View state
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState(null)
-
-  // Calculate dynamic catalog price bounds
-  const minCatalogPrice = useMemo(() => Math.min(...PRODUCTS.map((p) => p.price)), [])
-  const maxCatalogPrice = useMemo(() => Math.max(...PRODUCTS.map((p) => p.price)), [])
 
   // Synchronize state with URL search parameters
   useEffect(() => {
@@ -391,7 +391,7 @@ export default function ShopPage() {
               type="range"
               min={minCatalogPrice}
               max={maxCatalogPrice}
-              step={2000}
+              step={100}
               value={priceRange}
               onChange={(e) => setPriceRange(Number(e.target.value))}
               className="w-full accent-[#D4AF37] cursor-pointer"
@@ -631,7 +631,7 @@ export default function ShopPage() {
                     type="range"
                     min={minCatalogPrice}
                     max={maxCatalogPrice}
-                    step={2000}
+                    step={100}
                     value={priceRange}
                     onChange={(e) => setPriceRange(Number(e.target.value))}
                     className="w-full accent-[#D4AF37] cursor-pointer"

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles } from 'lucide-react'
+import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles, Ruler } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import WishlistDrawer from '../wishlist/WishlistDrawer'
+import SizeChartModal from '../common/SizeChartModal'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -12,6 +13,7 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [sizeChartOpen, setSizeChartOpen] = useState(false)
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -91,7 +93,18 @@ export default function Header() {
               </span>
             )}
           </div>
-          <span className="hidden sm:inline text-gray-500 font-mono">COMPLIMENTARY WORLDWIDE COURIER</span>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setSizeChartOpen(true)}
+              className="inline-flex items-center gap-1.5 text-gray-400 hover:text-[#D4AF37] font-mono transition-colors cursor-pointer"
+              title="View Atelier Size Chart & Measurement Guide"
+            >
+              <Ruler size={11} className="text-[#D4AF37]" />
+              <span>SIZE CHART</span>
+            </button>
+            <span className="hidden sm:inline text-gray-500 font-mono">COMPLIMENTARY COURIER OVER ₹2,999</span>
+          </div>
         </div>
       </aside>
 
@@ -170,6 +183,18 @@ export default function Header() {
                 title="Search collection"
               >
                 <Search size={18} />
+              </button>
+
+              {/* Size Chart Button */}
+              <button
+                type="button"
+                onClick={() => setSizeChartOpen(true)}
+                aria-label="Open Atelier Size Chart & Fit Guide"
+                className="p-2 text-gray-300 hover:text-[#D4AF37] transition-colors cursor-pointer hidden md:flex items-center gap-1 font-mono text-[11px] tracking-wider"
+                title="Size Chart & Fit Guide"
+              >
+                <Ruler size={15} />
+                <span className="hidden xl:inline uppercase">Sizing</span>
               </button>
 
               {/* Wishlist Button */}
@@ -270,6 +295,17 @@ export default function Header() {
                   {totalWishlist} saved
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  setSizeChartOpen(true)
+                }}
+                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between text-left cursor-pointer"
+              >
+                <span>Size Chart & Guide</span>
+                <Ruler size={18} className="text-[#D4AF37]" />
+              </button>
             </nav>
 
             <div className="pt-6 border-t border-white/10 flex flex-col space-y-2 text-[11px] tracking-widest uppercase text-gray-400 font-mono">
@@ -282,6 +318,9 @@ export default function Header() {
 
       {/* Persistent Wishlist Slide-Over */}
       <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
+
+      {/* Persistent Atelier Size Chart Modal */}
+      <SizeChartModal isOpen={sizeChartOpen} onClose={() => setSizeChartOpen(false)} />
     </>
   )
 }

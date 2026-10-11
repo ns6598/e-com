@@ -21,7 +21,7 @@ const FAQ_ITEMS = [
     category: 'Shipping & Delivery',
     question: "What is AUREVA's delivery timeline and shipping policy?",
     answer:
-      'We provide complimentary white-glove courier delivery on all orders of ₹25,000 and above. Orders below ₹25,000 carry a standard courier fee of ₹1,500. Standard delivery timeframes are 3 to 5 business days for major metropolitan areas. Each shipment is packaged in archival garment sleeves and tracked with real-time signature courier dispatches.',
+      'We provide complimentary express delivery on all orders of ₹2,999 and above. Orders below ₹2,999 carry a standard nominal courier fee of ₹199. Standard delivery timeframes are 3 to 5 business days for major metropolitan areas. Each shipment is packaged in archival garment sleeves and tracked with real-time signature courier dispatches.',
   },
   {
     id: 'faq-returns',

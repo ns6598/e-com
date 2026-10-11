@@ -148,8 +148,8 @@ export function CartProvider({ children }) {
     ? Math.round((subtotal * appliedCoupon.discountPercent) / 100)
     : 0
 
-  const freeShippingThreshold = 25000
-  const shipping = subtotal === 0 ? 0 : subtotal >= freeShippingThreshold ? 0 : 1500
+  const freeShippingThreshold = 2999
+  const shipping = subtotal === 0 ? 0 : subtotal >= freeShippingThreshold ? 0 : 199
   const grandTotal = Math.max(0, subtotal - discount + shipping)
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal)
 
