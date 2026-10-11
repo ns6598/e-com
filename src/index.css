@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #F6F2EA;
+  --color-ivory-light: #FAF8F5;
+  --color-ivory-dark: #EAE3D5;
+  --color-ink: #171717;
+  --color-ink-soft: #2A2A2A;
+  --color-ink-muted: #5A5854;
+  --color-oxblood: #6D202D;
+  --color-oxblood-dark: #521822;
+  --color-oxblood-light: #8B2C3C;
+  --color-stone: #D8D0C4;
+  --color-stone-light: #EBE6DE;
+  --color-stone-dark: #BCB2A2;
+  --color-pure-white: #FFFFFF;
+
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-display: 'Italiana', 'Cormorant Garamond', serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Custom base typography & scrollbar */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    background-color: var(--color-ivory);
+    color: var(--color-ink);
+  }
+
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Accessible focus indicators for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--color-oxblood);
+    outline-offset: 2px;
+  }
+
+  /* Respect user preference for reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  ::selection {
+    background-color: var(--color-oxblood);
+    color: var(--color-ivory);
+  }
+
+  /* Refined high-fashion scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ivory);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-stone-dark);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-oxblood);
+  }
+}
+
+/* Editorial utility classes */
+.editorial-title {
+  font-family: var(--font-serif);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.editorial-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tag-overline {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
