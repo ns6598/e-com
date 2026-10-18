@@ -4,6 +4,7 @@ import productService, { formatDatabaseProduct } from '../services/productServic
 import contactService from '../services/contactService.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 import { PRODUCTS, CATEGORIES } from '../data/products.js'
+import { mockUsers, mockLoginActivities } from './authController.js'
 
 // In-memory fallback coupon store for dev admin testing
 const adminMockCoupons = [
@@ -681,13 +682,14 @@ export async function adminListCustomers(req, res, next) {
       }
     }
 
-    // In-memory fallback patrons
+    // In-memory fallback patrons including any newly registered users
     const mockPatrons = [
       {
         id: 'usr-01',
         name: 'Elena Rostova',
         email: 'patron@aureva-studios.demo',
         role: 'CUSTOMER',
+        phone: '+91 98765 43210',
         orderCount: 3,
         totalSpent: 54500,
         location: 'Paris, Île-de-France',
@@ -698,6 +700,7 @@ export async function adminListCustomers(req, res, next) {
         name: 'Marc Dubois',
         email: 'marc.dubois@aureva-studios.demo',
         role: 'CUSTOMER',
+        phone: '+91 98765 43211',
         orderCount: 2,
         totalSpent: 42000,
         location: 'Lyon, Auvergne-Rhône-Alpes',
@@ -708,6 +711,7 @@ export async function adminListCustomers(req, res, next) {
         name: 'Camille Laurent',
         email: 'camille.laurent@aureva-studios.demo',
         role: 'CUSTOMER',
+        phone: '+91 98765 43212',
         orderCount: 1,
         totalSpent: 24000,
         location: 'Bordeaux, Nouvelle-Aquitaine',
@@ -718,6 +722,7 @@ export async function adminListCustomers(req, res, next) {
         name: 'Siddharth Mehta',
         email: 'siddharth.mehta@aureva-studios.demo',
         role: 'CUSTOMER',
+        phone: '+91 98765 43213',
         orderCount: 4,
         totalSpent: 96800,
         location: 'Mumbai, Maharashtra',
@@ -728,6 +733,7 @@ export async function adminListCustomers(req, res, next) {
         name: 'Henri de Montmirail',
         email: 'curator@aureva-studios.demo',
         role: 'ADMIN',
+        phone: '+91 98765 00000',
         orderCount: 0,
         totalSpent: 0,
         location: 'Atelier Head Office, Paris',
@@ -735,9 +741,259 @@ export async function adminListCustomers(req, res, next) {
       },
     ]
 
+    // Append newly registered mock patrons
+    if (mockUsers && mockUsers.size > 0) {
+      for (const [email, user] of mockUsers.entries()) {
+        if (!mockPatrons.some((p) => p.email.toLowerCase() === email.toLowerCase())) {
+          mockPatrons.unshift({
+            id: user.id,
+            name: user.name || 'Atelier Patron',
+            email: user.email,
+            role: user.role || 'CUSTOMER',
+            phone: user.phone || '—',
+            orderCount: 0,
+            totalSpent: 0,
+            location: user.city && user.state ? `${user.city}, ${user.state}` : 'New Registration',
+            joinedAt: user.createdAt || new Date().toISOString(),
+          })
+        }
+      }
+    }
+
     return successResponse(res, {
       message: 'Patron directory retrieved',
       data: mockPatrons,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Get individual customer details (excluding passwords, hashes, tokens)
+ * Endpoint: GET /api/admin/customers/:id
+ */
+export async function adminGetCustomerById(req, res, next) {
+  try {
+    const { id } = req.params
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+            addresses: true,
+            orders: {
+              select: {
+                id: true,
+                orderReference: true,
+                total: true,
+                orderStatus: true,
+                paymentStatus: true,
+                createdAt: true,
+                items: {
+                  select: {
+                    productName: true,
+                    quantity: true,
+                    unitPrice: true,
+                  },
+                },
+              },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        })
+
+        if (user) {
+          return successResponse(res, {
+            message: 'Customer details retrieved',
+            data: user,
+          })
+        }
+      } catch (err) {
+        console.warn('[Admin] Customer detail fallback:', err.message)
+      }
+    }
+
+    // In-memory fallback
+    const patron = Array.from(mockUsers.values()).find((u) => u.id === id || u.email === id) || {
+      id,
+      name: 'Elena Rostova',
+      email: 'patron@aureva-studios.demo',
+      role: 'CUSTOMER',
+      phone: '+91 98765 43210',
+      createdAt: '2026-01-15T10:00:00.000Z',
+      addresses: [{ city: 'Paris', state: 'Île-de-France', addressLine1: '42 Rue du Faubourg Saint-Honoré', isDefault: true }],
+      orders: [
+        {
+          id: 'ord-mock-01',
+          orderReference: 'AUR-2026-008492',
+          total: 28500,
+          orderStatus: 'DELIVERED',
+          paymentStatus: 'PAID',
+          createdAt: '2026-03-01T12:00:00.000Z',
+          items: [{ productName: 'Sculptural Wool Cocoon Coat', quantity: 1, unitPrice: 28500 }],
+        },
+      ],
+    }
+
+    // Strip any sensitive credentials
+    const { password, altPassword, ...safePatron } = patron
+    return successResponse(res, {
+      message: 'Customer details retrieved',
+      data: safePatron,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Get customer orders
+ * Endpoint: GET /api/admin/customers/:id/orders
+ */
+export async function adminGetCustomerOrders(req, res, next) {
+  try {
+    const { id } = req.params
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const orders = await prisma.order.findMany({
+          where: { userId: id },
+          include: {
+            items: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        return successResponse(res, {
+          message: 'Customer orders retrieved',
+          data: orders,
+        })
+      } catch (err) {
+        console.warn('[Admin] Customer orders fallback:', err.message)
+      }
+    }
+
+    return successResponse(res, {
+      message: 'Customer orders retrieved',
+      data: [
+        {
+          id: `ord-cust-${id}-1`,
+          orderReference: 'AUR-2026-009182',
+          total: 34500,
+          orderStatus: 'PROCESSING',
+          paymentStatus: 'PAID',
+          createdAt: new Date().toISOString(),
+          items: [
+            { productName: 'Architectural Pleated Trouser', quantity: 1, unitPrice: 18500 },
+            { productName: 'Raw Edge Heavy Mock-Neck', quantity: 1, unitPrice: 16000 },
+          ],
+        },
+      ],
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Get system login activity audit log
+ * Endpoint: GET /api/admin/login-activity
+ */
+export async function adminGetLoginActivity(req, res, next) {
+  try {
+    const page = parseInt(req.query.page, 10) || 1
+    const limit = parseInt(req.query.limit, 10) || 30
+
+    if (dbStatus.isConnected && prisma && prisma.loginActivity) {
+      try {
+        const [total, activities] = await Promise.all([
+          prisma.loginActivity.count(),
+          prisma.loginActivity.findMany({
+            skip: (page - 1) * limit,
+            take: limit,
+            orderBy: { timestamp: 'desc' },
+            include: {
+              user: {
+                select: { id: true, name: true, role: true },
+              },
+            },
+          }),
+        ])
+
+        return successResponse(res, {
+          message: 'Login activity audit trail retrieved',
+          data: {
+            items: activities,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit) || 1,
+            },
+          },
+        })
+      } catch (err) {
+        console.warn('[Admin] Login activity DB fallback:', err.message)
+      }
+    }
+
+    // In-memory fallback login activity
+    const total = mockLoginActivities.length
+    const startIndex = (page - 1) * limit
+    const items = mockLoginActivities.slice(startIndex, startIndex + limit)
+
+    // Pre-populate realistic seed activities if empty
+    if (items.length === 0) {
+      items.push(
+        {
+          id: 'log-seed-01',
+          email: 'curator@aureva-studios.demo',
+          success: true,
+          ipAddress: '192.168.1.100',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0',
+          failureReason: null,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: 'log-seed-02',
+          email: 'patron@aureva-studios.demo',
+          success: true,
+          ipAddress: '172.16.0.4',
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4) Safari/604.1',
+          failureReason: null,
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: 'log-seed-03',
+          email: 'unknown-intruder@suspicious.io',
+          success: false,
+          ipAddress: '45.33.32.156',
+          userAgent: 'Python-urllib/3.10',
+          failureReason: 'INVALID_CREDENTIALS',
+          timestamp: new Date(Date.now() - 7200000).toISOString(),
+        }
+      )
+    }
+
+    return successResponse(res, {
+      message: 'Login activity audit trail retrieved',
+      data: {
+        items,
+        pagination: {
+          page,
+          limit,
+          total: total || items.length,
+          totalPages: Math.ceil((total || items.length) / limit) || 1,
+        },
+      },
     })
   } catch (error) {
     next(error)

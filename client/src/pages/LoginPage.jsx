@@ -37,19 +37,12 @@ export default function LoginPage() {
     }
   }
 
-  const handleQuickFill = (type) => {
+  const handleQuickFill = () => {
     setError('')
-    if (type === 'patron') {
-      setFormData({
-        email: 'patron@aureva-studios.demo',
-        password: 'AurevaSalon2026!',
-      })
-    } else if (type === 'admin') {
-      setFormData({
-        email: 'curator@aureva-studios.demo',
-        password: 'AurevaAdmin2026!',
-      })
-    }
+    setFormData({
+      email: 'patron@aureva-studios.demo',
+      password: 'AurevaSalon2026!',
+    })
   }
 
   return (
@@ -76,24 +69,14 @@ export default function LoginPage() {
             </span>
             <span className="text-[10px] text-[#A6A6A6] uppercase">1-CLICK POPULATE</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('patron')}
-              className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-mono border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-all cursor-pointer text-left flex flex-col justify-center"
-            >
-              <span className="font-bold text-[#F5F5F5]">Customer / Patron</span>
-              <span className="text-[#A6A6A6] text-[9px] truncate">patron@aureva-studios.demo</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin')}
-              className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-mono border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-all cursor-pointer text-left flex flex-col justify-center"
-            >
-              <span className="font-bold text-[#B8FF00]">Admin / Curator</span>
-              <span className="text-[#A6A6A6] text-[9px] truncate">curator@aureva-studios.demo</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleQuickFill}
+            className="w-full px-3 py-2.5 text-[10px] uppercase tracking-wider font-mono border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-all cursor-pointer text-left flex flex-col justify-center"
+          >
+            <span className="font-bold text-[#F5F5F5]">Customer / Patron</span>
+            <span className="text-[#A6A6A6] text-[9px] truncate">patron@aureva-studios.demo</span>
+          </button>
         </div>
 
         {/* Login Form Card */}

@@ -46,7 +46,7 @@ export default function Header() {
 
   const { openCart, totalItems, cartBounced } = useCart()
   const { totalWishlist } = useWishlist()
-  const { user, isAuthenticated, isAdmin } = useAuth()
+  const { user, isAuthenticated } = useAuth()
 
   // Rotate announcement bar every 5 seconds
   useEffect(() => {
@@ -638,18 +638,6 @@ export default function Header() {
                   </Link>
                 </motion.div>
               ))}
-
-              {isAdmin && (
-                <div className="pt-4 border-t border-[#292929]">
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="font-mono text-xs uppercase tracking-widest text-[#B8FF00] font-bold block"
-                  >
-                    → ADMIN CONSOLE
-                  </Link>
-                </div>
-              )}
             </nav>
 
             {/* Mobile Footer Coordinates */}

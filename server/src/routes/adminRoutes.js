@@ -16,6 +16,9 @@ import {
   adminDeleteCoupon,
   adminGetDashboardStats,
   adminListCustomers,
+  adminGetCustomerById,
+  adminGetCustomerOrders,
+  adminGetLoginActivity,
   adminListInquiries,
   adminUpdateInquiryStatus,
 } from '../controllers/adminController.js'
@@ -67,8 +70,13 @@ router.post('/coupons', validate(createCouponSchema), adminCreateCoupon)
 router.patch('/coupons/:id', validate(updateCouponSchema), adminUpdateCoupon)
 router.delete('/coupons/:id', adminDeleteCoupon)
 
-// Patron Directory & Concierge Inquiries
+// Patron Directory, Customer Orders & Login Activity
 router.get('/customers', adminListCustomers)
+router.get('/customers/:id', adminGetCustomerById)
+router.get('/customers/:id/orders', adminGetCustomerOrders)
+router.get('/login-activity', adminGetLoginActivity)
+
+// Concierge Inquiries
 router.get('/inquiries', adminListInquiries)
 router.patch('/inquiries/:id/status', adminUpdateInquiryStatus)
 

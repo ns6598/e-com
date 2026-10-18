@@ -46,10 +46,11 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  orders    Order[]
-  addresses Address[]
-  cart      Cart?
-  wishlist  Wishlist?
+  orders          Order[]
+  addresses       Address[]
+  cart            Cart?
+  wishlist        Wishlist?
+  loginActivities LoginActivity[]
 
   @@map("users")
 }
@@ -306,4 +307,21 @@ model NewsletterSubscriber {
   createdAt DateTime @default(now())
 
   @@map("newsletter_subscribers")
+}
+
+// 12. Login Activity Model (Admin audit log for authentication events)
+model LoginActivity {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email         String
+  success       Boolean  @default(true)
+  ipAddress     String?
+  userAgent     String?
+  failureReason String?
+  timestamp     DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("login_activities")
 }

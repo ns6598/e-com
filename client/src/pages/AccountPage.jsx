@@ -27,7 +27,7 @@ import { formatCurrency } from '../utils/formatters'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function AccountPage() {
-  const { user, loading, logout, updateProfile, isAdmin } = useAuth()
+  const { user, loading, logout, updateProfile } = useAuth()
   const { wishlist, removeFromWishlist } = useWishlist()
   const { addToCart } = useCart()
   const navigate = useNavigate()
@@ -163,11 +163,6 @@ export default function AccountPage() {
             <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-[#B8FF00] block">
               AUREVA PATRON DOSSIER
             </span>
-            {isAdmin && (
-              <span className="px-2 py-0.5 text-[9px] uppercase font-mono tracking-widest bg-[#B8FF00] text-[#090909] font-bold">
-                ADMIN ACCESS
-              </span>
-            )}
           </div>
           <h1 className="font-['Syne'] text-3xl sm:text-5xl font-extrabold uppercase text-[#F5F5F5] mt-1">
             {user?.name || 'PATRON ACCOUNT'}
@@ -178,16 +173,6 @@ export default function AccountPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isAdmin && (
-            <Link
-              to="/admin"
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-['Oswald'] font-bold bg-[#B8FF00] text-[#090909] hover:bg-[#cbfb27] transition-all cursor-pointer"
-            >
-              <Sliders size={14} />
-              <span>ADMIN DASHBOARD</span>
-            </Link>
-          )}
-
           <button
             type="button"
             onClick={handleLogout}
@@ -282,19 +267,6 @@ export default function AccountPage() {
             </span>
             <ChevronRight size={14} className="opacity-60" />
           </button>
-
-          {isAdmin && (
-            <Link
-              to="/admin"
-              className="w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border border-[#B8FF00]/40 bg-[#171717] text-[#B8FF00] hover:bg-[#202020] transition-all flex items-center justify-between mt-4"
-            >
-              <span className="flex items-center gap-2.5">
-                <Sliders size={15} />
-                <span>ADMIN CONSOLE</span>
-              </span>
-              <ExternalLink size={13} />
-            </Link>
-          )}
         </aside>
 
         {/* Right Tab Content */}
