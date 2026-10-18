@@ -4,8 +4,19 @@ import axios from 'axios'
  * AUREVA Atelier API Client
  * Centralized Axios instance configured with environment-based base URL,
  * withCredentials for secure cookie exchange, and standard error interceptors.
+ *
+ * In production deployments:
+ * 1. Uses VITE_API_URL environment variable if configured (e.g. deployed backend URL).
+ * 2. If VITE_API_URL is omitted and running in production, uses relative '/api'
+ *    to avoid Mixed Content browser security blocks against http://localhost:5000.
+ * 3. In local development, falls back to 'http://localhost:5000/api'.
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const rawApiUrl = import.meta.env.VITE_API_URL
+const API_BASE_URL = rawApiUrl
+  ? rawApiUrl.replace(/\/+$/, '')
+  : import.meta.env.PROD
+  ? '/api'
+  : 'http://localhost:5000/api'
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,7 +25,8 @@ export const api = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  timeout: 15000,
+  // 6s timeout so catalog fallbacks trigger rapidly if backend is unreachable
+  timeout: 6000,
 })
 
 // Request interceptor: attach bearer token and persistent anonymous session ID

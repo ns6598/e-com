@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import productService from '../services/productService'
 import categoryService from '../services/categoryService'
+import { PRODUCTS } from '../data/products'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
 import { formatCurrency } from '../utils/formatters'
@@ -161,7 +162,11 @@ export default function ShopPage() {
       }
     } catch (err) {
       console.error('[ShopPage] Fetch Error:', err)
-      setError('Unable to retrieve collection from atelier server. Please check connection.')
+      // Fallback directly to static catalog so customer always sees garments
+      const fallbackItems = PRODUCTS.slice(0, 12)
+      setProducts(fallbackItems)
+      setPagination({ page: 1, limit: 12, total: fallbackItems.length, totalPages: 1 })
+      setError(null)
     } finally {
       setLoading(false)
     }

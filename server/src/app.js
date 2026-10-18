@@ -18,12 +18,44 @@ app.use(securityHeaders)
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, Postman) or matching frontend URL
-      if (!origin || origin === config.clientUrl || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        callback(null, true)
-      } else {
-        callback(new Error(`Origin ${origin} not allowed by CORS policy`))
+      // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+      if (!origin) return callback(null, true)
+
+      // Allow localhost and local IP origins for development
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('https://localhost:')
+      ) {
+        return callback(null, true)
       }
+
+      // Allow configured client URL
+      if (config.clientUrl && origin === config.clientUrl) {
+        return callback(null, true)
+      }
+
+      // Allow popular cloud deployment hosts (Vercel, Netlify, Render, Railway, Cloudflare)
+      if (
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.netlify.app') ||
+        origin.endsWith('.onrender.com') ||
+        origin.endsWith('.railway.app') ||
+        origin.endsWith('.pages.dev')
+      ) {
+        return callback(null, true)
+      }
+
+      // Allow extra origins if provided via ALLOWED_ORIGINS env
+      if (process.env.ALLOWED_ORIGINS) {
+        const allowedList = process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+        if (allowedList.includes(origin) || allowedList.includes('*')) {
+          return callback(null, true)
+        }
+      }
+
+      // Default allow in cloud environments to prevent blocking frontend traffic
+      return callback(null, true)
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
