@@ -258,6 +258,11 @@ VITE_API_URL=http://localhost:5000/api
 | **Orders** | `POST` | `/api/orders` | Create order (transaction, stock decrement, idempotency) | Customer |
 | **Orders** | `GET` | `/api/orders` | List customer orders (ownership enforced) | Customer |
 | **Orders** | `GET` | `/api/orders/:id` | Fetch order dossier by ID or `AUR-` reference | Customer |
+| **Orders** | `POST` | `/api/orders/:id/cancel` | Cancel order & restore inventory (ownership enforced) | Customer |
+| **Payments** | `GET` | `/api/payments/config` | Inspect payment gateway status & public credentials | Customer |
+| **Payments** | `POST` | `/api/payments/create-session` | Initialize session with authoritative order total | Customer |
+| **Payments** | `POST` | `/api/payments/verify` | Verify payment confirmation with cryptographic signature | Customer |
+| **Payments** | `POST` | `/api/payments/webhook/:provider` | Provider webhook listener with HMAC SHA-256 verification | Webhook Service |
 | **Admin** | `GET / POST` | `/api/admin/products` | Manage products (includes inactive, inventory counts) | **ADMIN Only** |
 | **Admin** | `PATCH / DELETE` | `/api/admin/products/:id` | Update / delete product | **ADMIN Only** |
 | **Admin** | `POST` | `/api/admin/products/:id/variants` | Add variant to product | **ADMIN Only** |
@@ -267,3 +272,64 @@ VITE_API_URL=http://localhost:5000/api
 | **Admin** | `PATCH` | `/api/admin/orders/:id/status` | Update `orderStatus` and `paymentStatus` | **ADMIN Only** |
 | **Admin** | `CRUD` | `/api/admin/coupons` | Manage promotional coupons | **ADMIN Only** |
 | **Contact** | `POST` | `/api/contact` | Submit atelier dossier concierge inquiry | Public |
+
+---
+
+## 🚢 Production Deployment Architecture
+
+The application is structured for independent frontend and backend deployment.
+
+### 1. Backend API Deployment (Render / Railway / AWS / DigitalOcean)
+- **Root Directory**: `server/`
+- **Build Command**: `npm install && npx prisma generate`
+- **Start Command**: `node src/server.js` (or `npm start`)
+- **Required Backend Environment Variables**:
+  ```env
+  PORT=5000
+  NODE_ENV=production
+  CLIENT_URL=https://your-aureva-store.com
+  DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+  JWT_SECRET=production_super_secret_jwt_key_at_least_32_characters_long
+  JWT_EXPIRES_IN=7d
+  COOKIE_SECRET=production_cookie_signing_secret_key_long_and_random
+  ADMIN_EMAIL=curator@your-aureva-store.com
+  ADMIN_PASSWORD=ComplexAdminPassword2026!
+  PAYMENT_PROVIDER=simulation # or 'stripe' / 'razorpay' when provider keys are configured
+  ```
+
+### 2. Frontend Application Deployment (Vercel / Netlify / Cloudflare Pages)
+- **Root Directory**: `client/`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Required Frontend Environment Variables**:
+  ```env
+  VITE_API_URL=https://api.your-aureva-store.com/api
+  ```
+
+### 3. PostgreSQL Database Provisioning & Migration
+1. Provision a managed PostgreSQL 15+ database (e.g. AWS RDS, Supabase, Neon, Railway).
+2. Set `DATABASE_URL` in your production backend environment.
+3. Apply versioned schema migrations:
+   ```bash
+   npx prisma migrate deploy
+   ```
+4. Seed initial taxonomy and collections (only seeds admin if credentials are provided in env):
+   ```bash
+   node prisma/seed.js
+   ```
+
+### 4. CORS, HTTPS & Secure Cookie Policies
+- **CORS**: Configured strictly to allow only `CLIENT_URL` with credentials enabled (`credentials: true`).
+- **Cookies**: In production (`NODE_ENV=production`), session cookies are set with:
+  - `httpOnly: true` (prevents JavaScript/XSS reading)
+  - `secure: true` (transmitted only over HTTPS)
+  - `sameSite: 'none'` (for cross-origin frontend-to-backend requests with credentials) or `'strict'` (for same-domain setups)
+- **CSRF Protection**: Non-GET/HEAD cookie mutations require verified `Origin` matching `CLIENT_URL` or an anti-CSRF custom header (`X-Requested-With`, `X-CSRF-Token`).
+
+### 5. Production Database Backup Considerations
+- **Automated Snapshots**: Enable daily point-in-time recovery (PITR) on managed PostgreSQL providers.
+- **Logical Backups**: Run automated daily logical dumps:
+  ```bash
+  pg_dump -Fc --no-acl --no-owner -h <HOST> -U <USER> <DATABASE> > aureva_backup_$(date +%Y%m%d).dump
+  ```
+- **Transaction Safety**: Financial transactions utilize atomic Prisma transactions with explicit `Decimal(10,2)` arithmetic to prevent monetary drift during concurrent volume.

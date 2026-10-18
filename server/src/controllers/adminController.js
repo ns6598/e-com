@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma, dbStatus } from '../config/db.js'
 import productService, { formatDatabaseProduct } from '../services/productService.js'
+import contactService from '../services/contactService.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 import { PRODUCTS, CATEGORIES } from '../data/products.js'
 
@@ -201,9 +202,25 @@ export async function adminUpdateVariantStock(req, res, next) {
       }
     }
 
+    // In-memory catalog sync fallback
+    for (const p of PRODUCTS) {
+      if (Array.isArray(p.variants)) {
+        const v = p.variants.find((vr) => vr.id === id || vr.sku === id)
+        if (v) {
+          v.stockQuantity = parseInt(stockQuantity, 10)
+          p.stock = p.variants.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
+          p.inStock = p.stock > 0
+          return successResponse(res, {
+            message: `Stock level adjusted to ${v.stockQuantity}`,
+            data: v,
+          })
+        }
+      }
+    }
+
     return successResponse(res, {
       message: `Stock level adjusted to ${stockQuantity}`,
-      data: { id, stockQuantity },
+      data: { id, stockQuantity: parseInt(stockQuantity, 10) },
     })
   } catch (error) {
     next(error)
@@ -470,3 +487,290 @@ export async function adminDeleteCoupon(req, res, next) {
     next(error)
   }
 }
+
+// ---------------------------------------------------------------------------
+// 4. ATELIER ANALYTICS & DASHBOARD METRICS
+// ---------------------------------------------------------------------------
+
+export async function adminGetDashboardStats(req, res, next) {
+  try {
+    let totalProducts = PRODUCTS.length
+    let totalOrders = 0
+    let totalRevenue = 0
+    let lowStockCount = 0
+    let totalCustomers = 3
+    let recentOrders = []
+    let recentInquiries = []
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const [prodCount, lowStockVariants, orderAgg, ordersList, custCount, inqList] = await Promise.all([
+          prisma.product.count({ where: { isActive: true } }),
+          prisma.productVariant.count({ where: { stockQuantity: { lt: 5 } } }),
+          prisma.order.aggregate({
+            _sum: { total: true },
+            _count: { id: true },
+          }),
+          prisma.order.findMany({
+            take: 8,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              items: true,
+              user: { select: { email: true, name: true } },
+            },
+          }),
+          prisma.user.count({ where: { role: 'CUSTOMER' } }),
+          contactService.listInquiries(),
+        ])
+
+        totalProducts = prodCount
+        lowStockCount = lowStockVariants
+        totalOrders = orderAgg._count.id || 0
+        totalRevenue = orderAgg._sum.total ? Number(orderAgg._sum.total) : 0
+        totalCustomers = custCount
+        recentOrders = ordersList.map((o) => ({
+          id: o.id,
+          orderNumber: o.orderReference || o.id,
+          orderReference: o.orderReference || o.id,
+          customerName: o.user?.name || o.shippingAddress?.name || 'Patron',
+          customerEmail: o.user?.email || '',
+          total: Number(o.total || 0),
+          status: o.orderStatus,
+          orderStatus: o.orderStatus,
+          createdAt: o.createdAt,
+          itemsCount: o.items?.length || 0,
+        }))
+        recentInquiries = inqList.slice(0, 5)
+
+        return successResponse(res, {
+          message: 'Atelier executive dashboard metrics retrieved',
+          data: {
+            totalProducts,
+            totalOrders,
+            totalRevenue,
+            lowStockCount,
+            totalCustomers,
+            recentOrders,
+            recentInquiries,
+          },
+        })
+      } catch (err) {
+        console.warn('[Admin] Dashboard stats fallback:', err.message)
+      }
+    }
+
+    // In-Memory Fallback Stats
+    lowStockCount = PRODUCTS.filter((p) => {
+      const stock = Array.isArray(p.variants)
+        ? p.variants.reduce((acc, v) => acc + (v.stockQuantity || 0), 0)
+        : (p.stock || 0)
+      return stock < 5
+    }).length
+
+    const inquiries = await contactService.listInquiries()
+
+    return successResponse(res, {
+      message: 'Atelier executive dashboard metrics retrieved',
+      data: {
+        totalProducts,
+        totalOrders: 14,
+        totalRevenue: 248900,
+        lowStockCount,
+        totalCustomers: 8,
+        recentOrders: [
+          {
+            id: 'ord-101',
+            orderNumber: 'AUR-2026-904121',
+            orderReference: 'AUR-2026-904121',
+            customerName: 'Elena Rostova',
+            customerEmail: 'patron@aureva-studios.demo',
+            total: 18500,
+            status: 'PROCESSING',
+            orderStatus: 'PROCESSING',
+            createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+            itemsCount: 1,
+          },
+          {
+            id: 'ord-102',
+            orderNumber: 'AUR-2026-883419',
+            orderReference: 'AUR-2026-883419',
+            customerName: 'Marc Dubois',
+            customerEmail: 'marc.dubois@aureva-studios.demo',
+            total: 32000,
+            status: 'DISPATCHED',
+            orderStatus: 'DISPATCHED',
+            createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+            itemsCount: 2,
+          },
+          {
+            id: 'ord-103',
+            orderNumber: 'AUR-2026-771204',
+            orderReference: 'AUR-2026-771204',
+            customerName: 'Camille Laurent',
+            customerEmail: 'camille.laurent@aureva-studios.demo',
+            total: 24000,
+            status: 'DELIVERED',
+            orderStatus: 'DELIVERED',
+            createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+            itemsCount: 1,
+          },
+        ],
+        recentInquiries: inquiries.slice(0, 5),
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. CUSTOMER / PATRON DIRECTORY
+// ---------------------------------------------------------------------------
+
+export async function adminListCustomers(req, res, next) {
+  try {
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const users = await prisma.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+            orders: {
+              select: {
+                id: true,
+                total: true,
+                orderStatus: true,
+                createdAt: true,
+              },
+            },
+            addresses: {
+              select: {
+                city: true,
+                state: true,
+                isDefault: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        const formatted = users.map((u) => {
+          const totalSpent = u.orders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+          const defaultAddr = u.addresses.find((a) => a.isDefault) || u.addresses[0] || null
+          return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            orderCount: u.orders.length,
+            totalSpent,
+            location: defaultAddr ? `${defaultAddr.city}, ${defaultAddr.state}` : 'Paris, France',
+            joinedAt: u.createdAt,
+          }
+        })
+
+        return successResponse(res, {
+          message: 'Patron directory retrieved',
+          data: formatted,
+        })
+      } catch (err) {
+        console.warn('[Admin] Customer list fallback:', err.message)
+      }
+    }
+
+    // In-memory fallback patrons
+    const mockPatrons = [
+      {
+        id: 'usr-01',
+        name: 'Elena Rostova',
+        email: 'patron@aureva-studios.demo',
+        role: 'CUSTOMER',
+        orderCount: 3,
+        totalSpent: 54500,
+        location: 'Paris, Île-de-France',
+        joinedAt: '2026-01-15T10:00:00.000Z',
+      },
+      {
+        id: 'usr-02',
+        name: 'Marc Dubois',
+        email: 'marc.dubois@aureva-studios.demo',
+        role: 'CUSTOMER',
+        orderCount: 2,
+        totalSpent: 42000,
+        location: 'Lyon, Auvergne-Rhône-Alpes',
+        joinedAt: '2026-02-01T14:20:00.000Z',
+      },
+      {
+        id: 'usr-03',
+        name: 'Camille Laurent',
+        email: 'camille.laurent@aureva-studios.demo',
+        role: 'CUSTOMER',
+        orderCount: 1,
+        totalSpent: 24000,
+        location: 'Bordeaux, Nouvelle-Aquitaine',
+        joinedAt: '2026-02-14T09:15:00.000Z',
+      },
+      {
+        id: 'usr-04',
+        name: 'Siddharth Mehta',
+        email: 'siddharth.mehta@aureva-studios.demo',
+        role: 'CUSTOMER',
+        orderCount: 4,
+        totalSpent: 96800,
+        location: 'Mumbai, Maharashtra',
+        joinedAt: '2026-02-28T18:45:00.000Z',
+      },
+      {
+        id: 'usr-05',
+        name: 'Henri de Montmirail',
+        email: 'curator@aureva-studios.demo',
+        role: 'ADMIN',
+        orderCount: 0,
+        totalSpent: 0,
+        location: 'Atelier Head Office, Paris',
+        joinedAt: '2026-01-01T08:00:00.000Z',
+      },
+    ]
+
+    return successResponse(res, {
+      message: 'Patron directory retrieved',
+      data: mockPatrons,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. CONCIERGE & INQUIRIES VIEW
+// ---------------------------------------------------------------------------
+
+export async function adminListInquiries(req, res, next) {
+  try {
+    const list = await contactService.listInquiries()
+    return successResponse(res, {
+      message: 'Concierge inquiries retrieved',
+      data: list,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function adminUpdateInquiryStatus(req, res, next) {
+  try {
+    const { id } = req.params
+    const { status = 'RESOLVED' } = req.body
+    const updated = await contactService.updateInquiryStatus(id, status)
+    return successResponse(res, {
+      message: `Inquiry status modified to ${status}`,
+      data: updated,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

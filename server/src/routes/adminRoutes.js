@@ -14,6 +14,10 @@ import {
   adminCreateCoupon,
   adminUpdateCoupon,
   adminDeleteCoupon,
+  adminGetDashboardStats,
+  adminListCustomers,
+  adminListInquiries,
+  adminUpdateInquiryStatus,
 } from '../controllers/adminController.js'
 import { listOrders, updateOrderStatus } from '../controllers/orderController.js'
 import { requireAuth, requireAdmin } from '../middleware/authMiddleware.js'
@@ -33,6 +37,9 @@ const router = Router()
 
 // All Admin routes strictly require authentication and ADMIN role verification
 router.use(requireAuth, requireAdmin)
+
+// Executive Metrics & Analytics
+router.get('/stats', adminGetDashboardStats)
 
 // Product Management
 router.get('/products', adminListProducts)
@@ -59,5 +66,10 @@ router.get('/coupons', adminListCoupons)
 router.post('/coupons', validate(createCouponSchema), adminCreateCoupon)
 router.patch('/coupons/:id', validate(updateCouponSchema), adminUpdateCoupon)
 router.delete('/coupons/:id', adminDeleteCoupon)
+
+// Patron Directory & Concierge Inquiries
+router.get('/customers', adminListCustomers)
+router.get('/inquiries', adminListInquiries)
+router.patch('/inquiries/:id/status', adminUpdateInquiryStatus)
 
 export default router

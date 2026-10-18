@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Mail, Lock, ShieldCheck, AlertCircle } from 'lucide-react'
+import { User, Mail, Lock, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function RegisterPage() {
@@ -26,11 +25,11 @@ export default function RegisterPage() {
     setError('')
 
     if (!formData.name.trim()) {
-      setError('Please provide your full patron name.')
+      setError('Please provide your full legal name.')
       return
     }
     if (!formData.email.trim()) {
-      setError('A valid salon email address is required.')
+      setError('A valid email address is required.')
       return
     }
     if (formData.password.length < 8) {
@@ -54,68 +53,70 @@ export default function RegisterPage() {
   }
 
   return (
-    <PageTransition className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-white">
+    <PageTransition className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-[#F5F5F5]">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
-          <span className="tag-overline text-[#D4AF37] font-mono">CLIENT ADMISSION</span>
-          <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-white tracking-tight">
-            Register As Patron
+          <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-[#B8FF00] block">
+            AUREVA PATRON MEMBERSHIP
+          </span>
+          <h1 className="font-['Syne'] text-3xl sm:text-4xl uppercase font-bold tracking-wider text-[#F5F5F5]">
+            CREATE ACCOUNT
           </h1>
-          <p className="text-xs text-gray-400 font-mono tracking-wider max-w-xs mx-auto">
-            Create your bespoke profile to enjoy priority runway allocations, order tracking, and complimentary white-glove courier services.
+          <p className="text-xs text-[#A6A6A6] font-mono tracking-wider max-w-xs mx-auto">
+            Create your account to unlock order tracking, wishlist synchronization, and early drop alerts.
           </p>
         </div>
 
-        <div className="glass-panel p-6 sm:p-8 rounded-xs border-white/10 space-y-6 bg-[#0E1018]/90 shadow-2xl">
+        <div className="p-6 sm:p-8 bg-[#111111] border border-[#292929] space-y-6 shadow-2xl">
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3.5 border border-[#6D202D] bg-[#6D202D]/20 text-red-200 text-xs flex items-center gap-2.5 rounded-xs"
+              className="p-3.5 border border-[#8B0000] bg-[#171717] text-[#F5F5F5] text-xs flex items-center gap-2.5"
             >
-              <AlertCircle size={15} className="shrink-0 text-red-400" />
-              <span>{error}</span>
+              <AlertCircle size={15} className="shrink-0 text-[#8B0000]" />
+              <span className="font-mono text-xs">{error}</span>
             </motion.div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                Full Legal Name
+              <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                FULL NAME
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Elena Rostova"
+                  placeholder="e.g. Alex Vance"
                   required
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <User size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <User size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                Salon Email
+              <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                EMAIL ADDRESS
               </label>
               <div className="relative">
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="patron@domain.com"
+                  placeholder="alex@aureva-fashion.com"
                   required
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <Mail size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Mail size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                Password (min 8 characters)
+              <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                PASSWORD (MIN 8 CHARACTERS)
               </label>
               <div className="relative">
                 <input
@@ -124,16 +125,15 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••••••"
                   required
-                  minLength={8}
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <Lock size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                Confirm Password
+              <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                CONFIRM PASSWORD
               </label>
               <div className="relative">
                 <input
@@ -142,36 +142,44 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="••••••••••••"
                   required
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <Lock size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div className="pt-2">
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
+              <button
                 type="submit"
                 disabled={isSubmitting}
+                className="w-full py-3.5 bg-[#B8FF00] hover:bg-[#cbfb27] text-[#090909] font-['Oswald'] text-sm uppercase tracking-[0.2em] font-bold transition-all shadow-[0_0_15px_rgba(184,255,0,0.2)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {isSubmitting ? 'Establishing Profile...' : 'Create Patron Account'}
-              </Button>
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-[#090909] border-t-transparent rounded-full animate-spin" />
+                    <span>REGISTERING...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>CREATE PATRON ACCOUNT</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
             </div>
           </form>
 
-          <div className="border-t border-white/10 pt-4 text-center">
-            <p className="text-xs text-gray-400 font-mono">
-              Already possess an active salon account?{' '}
-              <Link
-                to="/login"
-                state={{ from: redirectPath }}
-                className="text-[#D4AF37] hover:underline font-semibold"
-              >
+          <div className="border-t border-[#292929] pt-4 text-center space-y-3">
+            <p className="text-xs text-[#A6A6A6] font-mono">
+              Already possess an AUREVA account?{' '}
+              <Link to="/login" className="text-[#B8FF00] hover:underline font-bold">
                 Sign In
               </Link>
             </p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#A6A6A6] font-mono">
+              <ShieldCheck size={12} className="text-[#B8FF00]" />
+              <span>SECURE BCRYPT PASSWORD ENCRYPTION</span>
+            </div>
           </div>
         </div>
       </div>

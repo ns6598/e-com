@@ -3,9 +3,10 @@ import { prisma, dbStatus } from '../config/db.js'
 import { couponService } from '../services/couponService.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 import { PRODUCTS } from '../data/products.js'
+import { mockAddresses } from './userController.js'
 
-const mockOrders = new Map()
-const idempotencyStore = new Map()
+export const mockOrders = new Map()
+export const idempotencyStore = new Map()
 
 // Cleanup idempotency keys older than 10 minutes
 setInterval(() => {
@@ -83,6 +84,8 @@ export async function createOrder(req, res, next) {
     }
 
     const {
+      addressId,
+      cartId,
       customerName,
       customerEmail,
       customerPhone,
@@ -102,7 +105,7 @@ export async function createOrder(req, res, next) {
       bodyIdempotencyKey ||
       null
 
-    // 1. Idempotency Check
+    // 1. Idempotency Check: Prevent duplicate order processing
     if (idempotencyKey) {
       const existing = idempotencyStore.get(`${user.id}:${idempotencyKey}`)
       if (existing) {
@@ -122,8 +125,91 @@ export async function createOrder(req, res, next) {
       })
     }
 
-    // 2. Validate and build shipping address snapshot
-    const resolvedShippingAddress = customShippingAddress || {
+    // 2. IDOR Prevention: Verify Cart Ownership if cartId provided
+    if (cartId) {
+      if (dbStatus.isConnected && prisma) {
+        try {
+          const cart = await prisma.cart.findUnique({ where: { id: cartId } })
+          if (cart && cart.userId !== user.id) {
+            return errorResponse(res, {
+              message: 'Forbidden. Cart does not belong to authenticated patron.',
+              code: 'FORBIDDEN',
+              statusCode: 403,
+            })
+          }
+        } catch (err) {
+          console.warn('[Order Creation] Cart ownership check fallback:', err.message)
+        }
+      }
+    }
+
+    // 3. IDOR Prevention: Verify Address Ownership if addressId provided
+    let verifiedAddress = null
+    if (addressId) {
+      if (dbStatus.isConnected && prisma) {
+        try {
+          const dbAddress = await prisma.address.findUnique({ where: { id: addressId } })
+          if (!dbAddress || dbAddress.userId !== user.id) {
+            return errorResponse(res, {
+              message: 'Forbidden. Delivery address does not belong to authenticated patron.',
+              code: 'FORBIDDEN',
+              statusCode: 403,
+            })
+          }
+          verifiedAddress = {
+            name: (customerName || user.name || 'Atelier Patron').trim(),
+            phone: (customerPhone || dbAddress.phone || '+91 98765 43210').trim(),
+            addressLine1: dbAddress.addressLine1.trim(),
+            addressLine2: dbAddress.addressLine2 ? dbAddress.addressLine2.trim() : null,
+            city: dbAddress.city.trim(),
+            state: dbAddress.state ? dbAddress.state.trim() : 'Default',
+            postalCode: dbAddress.postalCode.trim(),
+          }
+        } catch (err) {
+          console.warn('[Order Creation] Address ownership check fallback:', err.message)
+        }
+      }
+
+      // Check in fallback mock addresses
+      if (!verifiedAddress) {
+        let mockAddr = null
+        for (const [ownerId, addrs] of mockAddresses.entries()) {
+          const match = Array.isArray(addrs) ? addrs.find((a) => a.id === addressId) : null
+          if (match) {
+            mockAddr = match
+            break
+          }
+        }
+
+        if (mockAddr) {
+          if (mockAddr.userId !== user.id) {
+            return errorResponse(res, {
+              message: 'Forbidden. Delivery address does not belong to authenticated patron.',
+              code: 'FORBIDDEN',
+              statusCode: 403,
+            })
+          }
+          verifiedAddress = {
+            name: (customerName || user.name || 'Atelier Patron').trim(),
+            phone: (customerPhone || mockAddr.phone || '+91 98765 43210').trim(),
+            addressLine1: mockAddr.addressLine1.trim(),
+            addressLine2: mockAddr.addressLine2 ? mockAddr.addressLine2.trim() : null,
+            city: mockAddr.city.trim(),
+            state: mockAddr.state ? mockAddr.state.trim() : 'Default',
+            postalCode: mockAddr.postalCode.trim(),
+          }
+        } else if (!dbStatus.isConnected) {
+          return errorResponse(res, {
+            message: `Delivery address '${addressId}' not found.`,
+            code: 'ADDRESS_NOT_FOUND',
+            statusCode: 404,
+          })
+        }
+      }
+    }
+
+    // Validate and build shipping address snapshot
+    const resolvedShippingAddress = verifiedAddress || customShippingAddress || {
       name: (customerName || user.name || 'Atelier Patron').trim(),
       phone: (customerPhone || '+91 98765 43210').trim(),
       addressLine1: (address || 'Atelier Delivery Address').trim(),
@@ -144,7 +230,7 @@ export async function createOrder(req, res, next) {
     const orderReference = `AUR-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`
     let createdOrder = null
 
-    // 3. PostgreSQL Database Transaction (Authoritative Calculation & Atomic Decrement)
+    // 4. PostgreSQL Database Transaction (Authoritative Calculation & Atomic Decrement)
     if (dbStatus.isConnected && prisma) {
       try {
         createdOrder = await prisma.$transaction(async (tx) => {
@@ -168,7 +254,6 @@ export async function createOrder(req, res, next) {
               })
 
               if (product && product.variants.length > 0) {
-                // Find matching size and color or pick default variant
                 variant =
                   product.variants.find(
                     (v) =>
@@ -190,9 +275,11 @@ export async function createOrder(req, res, next) {
             // Protect against overselling: Check stock
             if (variant) {
               if (variant.stockQuantity < itemQty) {
-                throw new Error(
+                const stockErr = new Error(
                   `Insufficient stock for ${product.name} (${variant.size} / ${variant.color}). Available: ${variant.stockQuantity}, Requested: ${itemQty}.`
                 )
+                stockErr.code = 'INSUFFICIENT_STOCK'
+                throw stockErr
               }
 
               // Decrement variant stock atomically
@@ -222,35 +309,55 @@ export async function createOrder(req, res, next) {
 
           // Authoritative Server-Side Coupon Discount Calculation
           let calculatedDiscountDec = new Prisma.Decimal(0)
-          let appliedCouponRecord = null
 
           if (couponCode) {
             const cleanCode = couponCode.trim().toUpperCase()
             const coupon = await tx.coupon.findUnique({
-              where: { code: cleanCode, isActive: true },
+              where: { code: cleanCode },
             })
 
-            if (coupon) {
-              const now = new Date()
-              const isDateValid = (!coupon.startDate || now >= coupon.startDate) && (!coupon.expiryDate || now <= coupon.expiryDate)
-              const isUsageValid = !coupon.usageLimit || coupon.usedCount < coupon.usageLimit
-              const isMinValid = !coupon.minOrderValue || calculatedSubtotalDec.gte(coupon.minOrderValue)
-
-              if (isDateValid && isUsageValid && isMinValid) {
-                appliedCouponRecord = coupon
-                if (coupon.discountType === 'PERCENTAGE') {
-                  calculatedDiscountDec = calculatedSubtotalDec.mul(coupon.discountValue).dividedBy(100).toDecimalPlaces(2)
-                } else {
-                  calculatedDiscountDec = Prisma.Decimal.min(calculatedSubtotalDec, coupon.discountValue)
-                }
-
-                // Increment coupon used count atomically
-                await tx.coupon.update({
-                  where: { id: coupon.id },
-                  data: { usedCount: { increment: 1 } },
-                })
-              }
+            if (!coupon || !coupon.isActive) {
+              const err = new Error(`Coupon '${couponCode}' is invalid or deactivated.`)
+              err.code = 'COUPON_INVALID'
+              throw err
             }
+
+            const now = new Date()
+            if (coupon.startDate && now < coupon.startDate) {
+              const err = new Error(`Coupon '${couponCode}' is not yet active.`)
+              err.code = 'COUPON_INACTIVE'
+              throw err
+            }
+
+            if (coupon.expiryDate && now > coupon.expiryDate) {
+              const err = new Error(`Coupon '${couponCode}' has expired.`)
+              err.code = 'COUPON_EXPIRED'
+              throw err
+            }
+
+            if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+              const err = new Error(`Coupon '${couponCode}' has reached its maximum redemption limit.`)
+              err.code = 'COUPON_LIMIT_EXCEEDED'
+              throw err
+            }
+
+            if (coupon.minOrderValue && calculatedSubtotalDec.lt(coupon.minOrderValue)) {
+              const err = new Error(`Order minimum of ₹${coupon.minOrderValue} required for coupon '${couponCode}'.`)
+              err.code = 'COUPON_MIN_ORDER_UNMET'
+              throw err
+            }
+
+            if (coupon.discountType === 'PERCENTAGE') {
+              calculatedDiscountDec = calculatedSubtotalDec.mul(coupon.discountValue).dividedBy(100).toDecimalPlaces(2)
+            } else {
+              calculatedDiscountDec = Prisma.Decimal.min(calculatedSubtotalDec, coupon.discountValue)
+            }
+
+            // Increment coupon used count atomically
+            await tx.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } },
+            })
           }
 
           // Authoritative Shipping Calculation: Complimentary over ₹5,000, else flat ₹250
@@ -294,17 +401,23 @@ export async function createOrder(req, res, next) {
         })
       } catch (err) {
         console.warn('[Order Creation] Transaction error:', err.message)
-        if (err.message.includes('Insufficient stock') || err.message.includes('not available')) {
+        if (
+          err.code === 'INSUFFICIENT_STOCK' ||
+          err.code?.startsWith('COUPON_') ||
+          err.message.includes('Insufficient stock') ||
+          err.message.includes('not available') ||
+          err.message.includes('Coupon')
+        ) {
           return errorResponse(res, {
             message: err.message,
-            code: 'INVENTORY_STOCK_ERROR',
+            code: err.code || 'ORDER_VALIDATION_ERROR',
             statusCode: 400,
           })
         }
       }
     }
 
-    // 4. In-Memory Resilient Fallback
+    // 5. In-Memory Resilient Fallback (Safeguarding against overselling & coupon validation)
     if (!createdOrder) {
       let subtotal = 0
       const orderItems = []
@@ -314,11 +427,26 @@ export async function createOrder(req, res, next) {
         const catProduct = PRODUCTS.find((p) => p.id === item.productId || p.slug === item.productId)
         const unitPrice = catProduct ? catProduct.price : (item.price || 1500)
         const qty = parseInt(item.quantity, 10) || 1
+
+        // Safeguard against overselling in fallback mode
+        if (catProduct && typeof catProduct.stock === 'number') {
+          if (catProduct.stock < qty) {
+            return errorResponse(res, {
+              message: `Insufficient stock for ${catProduct.name}. Available: ${catProduct.stock}, Requested: ${qty}.`,
+              code: 'INSUFFICIENT_STOCK',
+              statusCode: 400,
+            })
+          }
+          // Decrement stock safely
+          catProduct.stock -= qty
+        }
+
         const lineTotal = unitPrice * qty
         subtotal += lineTotal
 
         orderItems.push({
           id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          productId: catProduct ? catProduct.id : (item.productId || 'GEN-PROD'),
           productName: catProduct ? catProduct.name : (item.name || 'AUREVA Silhouette'),
           sku: `AUR-${(catProduct ? catProduct.id : 'GEN').toUpperCase()}-${(item.size || 'STD').toUpperCase()}`,
           size: item.size || 'Standard',
@@ -334,7 +462,14 @@ export async function createOrder(req, res, next) {
       let discount = 0
       if (couponCode) {
         const valRes = await couponService.validate(couponCode, subtotal)
-        if (valRes.valid) discount = valRes.discount
+        if (!valRes.valid) {
+          return errorResponse(res, {
+            message: valRes.message || 'Coupon is invalid or ineligible.',
+            code: 'COUPON_INELIGIBLE',
+            statusCode: 400,
+          })
+        }
+        discount = valRes.discount || 0
       }
 
       const shipping = 0
@@ -602,6 +737,161 @@ export async function updateOrderStatus(req, res, next) {
 
     return successResponse(res, {
       message: `Order status modified`,
+      data: formatOrderResponse(order),
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Customer / Admin: Cancel order and safely restore inventory
+ * Endpoint: POST /api/orders/:id/cancel
+ */
+export async function cancelOrder(req, res, next) {
+  try {
+    const user = req.user
+    const { id } = req.params
+
+    if (!user) {
+      return errorResponse(res, {
+        message: 'Authentication required to cancel order',
+        code: 'UNAUTHORIZED',
+        statusCode: 401,
+      })
+    }
+
+    const isAdmin = user.role === 'ADMIN'
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const order = await prisma.order.findFirst({
+          where: { OR: [{ id }, { orderReference: id }] },
+          include: { items: true },
+        })
+
+        if (!order) {
+          return errorResponse(res, {
+            message: `Order reference '${id}' not found in archive`,
+            code: 'ORDER_NOT_FOUND',
+            statusCode: 404,
+          })
+        }
+
+        // Ownership enforcement
+        if (!isAdmin && order.userId !== user.id) {
+          return errorResponse(res, {
+            message: 'Forbidden. You do not own this order acquisition.',
+            code: 'FORBIDDEN',
+            statusCode: 403,
+          })
+        }
+
+        if (order.orderStatus === 'CANCELLED') {
+          return errorResponse(res, {
+            message: 'Order is already marked as cancelled.',
+            code: 'ALREADY_CANCELLED',
+            statusCode: 400,
+          })
+        }
+
+        if (order.orderStatus === 'DISPATCHED' || order.orderStatus === 'DELIVERED') {
+          return errorResponse(res, {
+            message: `Order cannot be cancelled once it has reached '${order.orderStatus}' state.`,
+            code: 'CANNOT_CANCEL',
+            statusCode: 400,
+          })
+        }
+
+        // Atomic Transaction: Restore stock and cancel order
+        const cancelledOrder = await prisma.$transaction(async (tx) => {
+          for (const item of order.items) {
+            if (item.variantId) {
+              await tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stockQuantity: { increment: item.quantity } },
+              })
+            }
+          }
+
+          const targetPaymentStatus = order.paymentStatus === 'PAID' ? 'REFUNDED' : order.paymentStatus
+
+          return await tx.order.update({
+            where: { id: order.id },
+            data: {
+              orderStatus: 'CANCELLED',
+              paymentStatus: targetPaymentStatus,
+            },
+            include: {
+              items: true,
+              user: { select: { email: true, name: true } },
+            },
+          })
+        })
+
+        return successResponse(res, {
+          message: 'Order successfully cancelled and inventory restored to atelier archive',
+          data: formatOrderResponse(cancelledOrder),
+        })
+      } catch (err) {
+        console.warn('[Orders Controller] Cancel DB transaction fallback:', err.message)
+      }
+    }
+
+    // In-memory fallback
+    const order =
+      mockOrders.get(id) ||
+      Array.from(mockOrders.values()).find((o) => o.id === id || o.orderReference === id || o.orderNumber === id)
+
+    if (!order) {
+      return errorResponse(res, {
+        message: `Order reference '${id}' not found`,
+        code: 'ORDER_NOT_FOUND',
+        statusCode: 404,
+      })
+    }
+
+    if (!isAdmin && order.userId && order.userId !== user.id) {
+      return errorResponse(res, {
+        message: 'Forbidden. You do not own this order acquisition.',
+        code: 'FORBIDDEN',
+        statusCode: 403,
+      })
+    }
+
+    if (order.orderStatus === 'CANCELLED') {
+      return errorResponse(res, {
+        message: 'Order is already marked as cancelled.',
+        code: 'ALREADY_CANCELLED',
+        statusCode: 400,
+      })
+    }
+
+    if (order.orderStatus === 'DISPATCHED' || order.orderStatus === 'DELIVERED') {
+      return errorResponse(res, {
+        message: `Order cannot be cancelled once it has reached '${order.orderStatus}' state.`,
+        code: 'CANNOT_CANCEL',
+        statusCode: 400,
+      })
+    }
+
+    // Safely restore stock in fallback catalog
+    for (const item of order.items || []) {
+      const catProduct = PRODUCTS.find((p) => p.id === item.productId || p.slug === item.productId)
+      if (catProduct && typeof catProduct.stock === 'number') {
+        catProduct.stock += item.quantity || 1
+      }
+    }
+
+    order.orderStatus = 'CANCELLED'
+    order.status = 'CANCELLED'
+    if (order.paymentStatus === 'PAID') {
+      order.paymentStatus = 'REFUNDED'
+    }
+    order.updatedAt = new Date().toISOString()
+
+    return successResponse(res, {
+      message: 'Order successfully cancelled and inventory restored',
       data: formatOrderResponse(order),
     })
   } catch (error) {

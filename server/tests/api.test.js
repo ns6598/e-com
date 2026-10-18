@@ -344,6 +344,18 @@ async function runApiTests() {
     'Customer accessing /api/admin/products receives HTTP 403 FORBIDDEN'
   )
 
+  const rCustomerAdminStats = await request('/admin/stats', { headers: authHeaders })
+  assert(
+    rCustomerAdminStats.status === 403,
+    'Customer accessing /api/admin/stats receives HTTP 403 FORBIDDEN'
+  )
+
+  const rCustomerAdminCustomers = await request('/admin/customers', { headers: authHeaders })
+  assert(
+    rCustomerAdminCustomers.status === 403,
+    'Customer accessing /api/admin/customers receives HTTP 403 FORBIDDEN'
+  )
+
   // Unauthenticated access to Admin endpoint receives 401 Unauthorized
   const rUnauthAdminAccess = await request('/admin/products')
   assert(rUnauthAdminAccess.status === 401, 'Unauthenticated access to /api/admin/products receives HTTP 401 UNAUTHORIZED')
@@ -369,6 +381,116 @@ async function runApiTests() {
 
     const rAdminCoupons = await request('/admin/coupons', { headers: adminHeaders })
     assert(rAdminCoupons.status === 200, 'Authenticated ADMIN user accesses /api/admin/coupons (200)')
+
+    // 10. Admin Executive Dashboard Stats
+    const rAdminStats = await request('/admin/stats', { headers: adminHeaders })
+    assert(
+      rAdminStats.status === 200 && rAdminStats.body.data?.totalProducts !== undefined,
+      'Admin GET /api/admin/stats returns executive analytics (total products, revenue, low stock)'
+    )
+
+    // 11. Admin Customer Directory (Never exposes password hashes)
+    const rAdminCustomers = await request('/admin/customers', { headers: adminHeaders })
+    assert(
+      rAdminCustomers.status === 200 && Array.isArray(rAdminCustomers.body.data),
+      'Admin GET /api/admin/customers returns registered patrons'
+    )
+    const customersData = rAdminCustomers.body.data || []
+    const leaksPassword = customersData.some((c) => c.password || c.passwordHash)
+    assert(!leaksPassword, 'Patron directory strictly excludes password hashes or credentials')
+
+    // 12. Admin Inquiries Desk
+    const rAdminInquiries = await request('/admin/inquiries', { headers: adminHeaders })
+    assert(rAdminInquiries.status === 200, 'Admin GET /api/admin/inquiries retrieves concierge inquiries')
+
+    // 13. Admin Product CRUD Operations
+    const newProductPayload = {
+      name: 'Sculpted Peak-Lapel Chesterfield Coat',
+      subtitle: 'Biella Double-Faced Cashmere',
+      department: 'Women',
+      category: 'Coats',
+      categoryId: 'cat-01',
+      basePrice: 42000,
+      comparisonPrice: 48000,
+      description: 'Hand-finished architectural coat tailored from pure Biella cashmere.',
+      materials: '100% Cashmere',
+      careInstructions: 'Specialist dry clean only',
+      images: ['https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1200&q=85'],
+      variants: [
+        { size: '38 IT', color: 'Camel', sku: 'AUR-CHS-38IT-CAM', stockQuantity: 8 },
+        { size: '40 IT', color: 'Camel', sku: 'AUR-CHS-40IT-CAM', stockQuantity: 3 },
+      ],
+    }
+
+    const rCreateProduct = await request('/admin/products', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(newProductPayload),
+    })
+    assert(rCreateProduct.status === 201, 'Admin POST /api/admin/products creates silhouette successfully (201)')
+    const createdProdId = rCreateProduct.body.data?.id
+
+    if (createdProdId) {
+      // Patch product (update price and status)
+      const rPatchProduct = await request(`/admin/products/${createdProdId}`, {
+        method: 'PATCH',
+        headers: adminHeaders,
+        body: JSON.stringify({ basePrice: 44000, isActive: false }),
+      })
+      assert(rPatchProduct.status === 200, 'Admin PATCH /api/admin/products/:id updates price and deactivates product')
+
+      // Delete product
+      const rDeleteProduct = await request(`/admin/products/${createdProdId}`, {
+        method: 'DELETE',
+        headers: adminHeaders,
+      })
+      assert(rDeleteProduct.status === 200, 'Admin DELETE /api/admin/products/:id archives silhouette from repertoire')
+    }
+
+    // 14. Inventory & Stock Controls (Negative Stock Prevention)
+    const rNegativeStock = await request('/admin/variants/var-test-01/stock', {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ stockQuantity: -5 }),
+    })
+    assert(
+      rNegativeStock.status === 400,
+      'Admin PATCH /api/admin/variants/:id/stock strictly rejects negative inventory (400)'
+    )
+
+    const rValidStock = await request('/admin/variants/var-test-01/stock', {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ stockQuantity: 14 }),
+    })
+    assert(
+      rValidStock.status === 200,
+      'Admin PATCH /api/admin/variants/:id/stock updates stock quantity with positive value (200)'
+    )
+
+    // 15. Order Status Transitions & Enforcement
+    const targetOrderId = rCreateOrder.body.data?.id || rCreateOrder.body.data?.orderReference
+    if (targetOrderId) {
+      const rInvalidOrderStatus = await request(`/orders/${targetOrderId}/status`, {
+        method: 'PATCH',
+        headers: adminHeaders,
+        body: JSON.stringify({ status: 'INVALID_STATUS_NAME' }),
+      })
+      assert(
+        rInvalidOrderStatus.status === 400,
+        'Admin PATCH /api/orders/:id/status rejects invalid order status transition (400)'
+      )
+
+      const rValidOrderStatus = await request(`/orders/${targetOrderId}/status`, {
+        method: 'PATCH',
+        headers: adminHeaders,
+        body: JSON.stringify({ status: 'DISPATCHED' }),
+      })
+      assert(
+        rValidOrderStatus.status === 200,
+        'Admin PATCH /api/orders/:id/status transitions status to DISPATCHED successfully (200)'
+      )
+    }
   }
 
   // ---------------------------------------------------------------------------

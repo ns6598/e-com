@@ -51,6 +51,42 @@ export const contactService = {
       inquiry,
     }
   },
+
+  async listInquiries() {
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const records = await prisma.contactMessage.findMany({
+          orderBy: { createdAt: 'desc' },
+        })
+        return records.map((r) => ({
+          referenceId: r.id,
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          subject: r.subject,
+          message: r.message,
+          status: 'RECEIVED',
+          createdAt: r.createdAt,
+        }))
+      } catch (err) {
+        console.warn('[Contact Service] List fallback:', err.message)
+      }
+    }
+
+    return Array.from(mockInquiries.values()).sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    )
+  },
+
+  async updateInquiryStatus(id, status) {
+    const item = mockInquiries.get(id)
+    if (item) {
+      item.status = status
+      mockInquiries.set(id, item)
+      return item
+    }
+    return { id, status }
+  },
 }
 
 export default contactService

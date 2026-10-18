@@ -62,7 +62,8 @@ export async function getCart(req, res, next) {
 export async function addToCart(req, res, next) {
   try {
     const { userId, sessionId, key } = getCartIdentifier(req)
-    const { variantId, quantity = 1 } = req.body
+    const variantId = req.body.variantId || req.body.productId
+    const quantity = req.body.quantity !== undefined ? req.body.quantity : 1
 
     if (quantity <= 0) {
       return errorResponse(res, {

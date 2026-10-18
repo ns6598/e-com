@@ -1,6 +1,11 @@
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-// Load environment variables from .env file
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Load server-specific .env first, then root .env
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 dotenv.config()
 
 export const config = {

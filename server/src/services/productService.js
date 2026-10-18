@@ -451,6 +451,11 @@ export const productService = {
       originalPrice: data.comparisonPrice,
       inStock: data.isActive !== false,
       stock: (data.variants || []).reduce((acc, v) => acc + (v.stockQuantity || 0), 0) || 10,
+      category: data.category || data.categoryId || 'Tailoring',
+      department: data.department || 'Women',
+      images: (data.images || []).map((img) => (typeof img === 'string' ? img : img.imageUrl)),
+      sizes: (data.variants || []).length > 0 ? [...new Set(data.variants.map((v) => v.size))] : ['One Size'],
+      colors: (data.variants || []).length > 0 ? [...new Set(data.variants.map((v) => v.color))].map((c) => ({ name: c })) : [{ name: 'Standard' }],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }

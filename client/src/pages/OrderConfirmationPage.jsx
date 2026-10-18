@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useParams, Link } from 'react-router-dom'
-import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer, Sparkles } from 'lucide-react'
+import { CheckCircle2, ShoppingBag, Truck, ArrowRight, ShieldCheck, Mail, Phone, Printer } from 'lucide-react'
 import api from '../services/api'
 import { formatCurrency } from '../utils/formatters'
-import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function OrderConfirmationPage() {
@@ -29,7 +28,7 @@ export default function OrderConfirmationPage() {
     return null
   })
 
-  // Attempt live lookup from API if needed
+  // Live lookup from API if needed
   useEffect(() => {
     if (orderId && (!order || (order.orderNumber !== orderId && order.id !== orderId))) {
       api.get(`/orders/${orderId}`)
@@ -44,23 +43,33 @@ export default function OrderConfirmationPage() {
 
   if (!order) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32 text-center space-y-6 text-white">
-        <div className="inline-flex p-4 rounded-full glass-panel mb-2">
-          <ShoppingBag size={48} className="text-gray-500 stroke-[1.2]" />
+      <PageTransition className="min-h-[70vh] flex items-center justify-center px-4 py-20 text-[#F5F5F5]">
+        <div className="max-w-md w-full text-center space-y-6 p-8 border border-[#292929] bg-[#111111]/80 backdrop-blur-sm">
+          <div className="inline-flex p-5 rounded-full bg-[#171717] border border-[#292929]">
+            <ShoppingBag size={42} className="text-[#A6A6A6] stroke-[1.2]" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.25em] font-mono text-[#B8FF00] block mb-2">
+              DISPATCH ARCHIVE
+            </span>
+            <h1 className="font-['Syne'] text-3xl font-bold uppercase text-[#F5F5F5]">
+              NO ORDER RECORD
+            </h1>
+          </div>
+          <p className="text-xs text-[#A6A6A6] tracking-wide leading-relaxed font-sans">
+            No active order dispatch record was found for this session. Explore our catalog to browse alternative fashion drops.
+          </p>
+          <div className="pt-4">
+            <Link
+              to="/shop"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-[#B8FF00] hover:bg-[#cbfb27] text-[#090909] font-['Oswald'] text-sm uppercase tracking-[0.18em] font-bold transition-all shadow-[0_0_20px_rgba(184,255,0,0.2)]"
+            >
+              <span>EXPLORE ALL DROPS</span>
+              <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
-        <span className="tag-overline text-[#D4AF37] block font-mono">ORDER ARCHIVE</span>
-        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
-          No Active Order Found
-        </h1>
-        <p className="text-xs text-gray-400 tracking-wider max-w-md mx-auto leading-relaxed font-mono">
-          There are no recently finalized demo orders recorded in your current browser session. Explore our catalog to place a selection.
-        </p>
-        <div className="pt-6">
-          <Button variant="primary" size="lg" to="/shop">
-            Explore The Collection
-          </Button>
-        </div>
-      </div>
+      </PageTransition>
     )
   }
 
@@ -69,14 +78,14 @@ export default function OrderConfirmationPage() {
   const customerName = order.customerName || order.customer?.fullName || order.customer?.name || 'Patron'
   const customerEmail = order.customerEmail || order.customer?.email || 'patron@aureva-studios.demo'
   const customerPhone = order.customerPhone || order.customer?.phone || ''
-  const shippingAddress = order.shippingAddress?.address || order.customer?.address || order.address || 'Atelier Delivery'
-  const shippingCity = order.shippingAddress?.city || order.customer?.city || order.city || 'Paris'
+  const shippingAddress = order.shippingAddress?.address || order.customer?.address || order.address || 'Standard Delivery'
+  const shippingCity = order.shippingAddress?.city || order.customer?.city || order.city || 'Mumbai'
   const shippingState = order.shippingAddress?.state || order.customer?.state || order.state || ''
   const shippingPostalCode = order.shippingAddress?.postalCode || order.customer?.postalCode || order.postalCode || ''
 
   const rawItems = order.items || []
   const normalizedItems = rawItems.map((item) => ({
-    name: item.name || item.product?.name || 'Monograph Silhouette',
+    name: item.name || item.product?.name || 'Alternative Silhouette',
     image: item.image || item.product?.images?.[0] || '',
     size: item.size || 'One Size',
     color: item.color || '',
@@ -98,194 +107,164 @@ export default function OrderConfirmationPage() {
     minute: '2-digit',
   })
 
-
   return (
-    <PageTransition className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-12 text-white">
-      {/* Top Confirmation Header */}
-      <div className="text-center space-y-4 max-w-xl mx-auto">
-        <div className="inline-flex p-3 rounded-full glass-panel-gold border-[#D4AF37]/50 text-[#D4AF37]">
-          <CheckCircle2 size={40} className="stroke-[1.8]" />
+    <PageTransition className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-10 text-[#F5F5F5]">
+      {/* Confirmation Header */}
+      <div className="text-center space-y-4 border-b border-[#292929] pb-8">
+        <div className="inline-flex p-4 rounded-full bg-[#171717] border border-[#B8FF00]/50 text-[#B8FF00]">
+          <CheckCircle2 size={44} />
         </div>
-        <span className="tag-overline text-[#D4AF37] block font-mono">DEMO SELECTION CONFIRMED</span>
-        <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
-          Thank You for Your Selection
-        </h1>
-        <p className="text-xs text-gray-300 leading-relaxed font-sans">
-          Your pieces have been allocated from the atelier archive. An official dispatch dossier will be sent to <strong className="text-white font-mono">{customerEmail}</strong>.
+        <div>
+          <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-[#B8FF00] block mb-1">
+            TRANSACTION CONFIRMED & DISPATCH ASSIGNED
+          </span>
+          <h1 className="font-['Syne'] text-3xl sm:text-5xl uppercase font-extrabold tracking-wider text-[#F5F5F5]">
+            ORDER RECORD ARCHIVED
+          </h1>
+        </div>
+        <p className="text-xs text-[#A6A6A6] font-mono tracking-wider max-w-md mx-auto leading-relaxed">
+          Thank you, <strong className="text-[#F5F5F5]">{customerName}</strong>. Your darkwear order has been transactionally committed to our PostgreSQL inventory database.
         </p>
       </div>
 
-      {/* Demo Prototype Notice Banner */}
-      <div className="glass-panel p-4 sm:p-5 text-xs text-gray-300 flex items-start gap-3 rounded-xs border-white/10">
-        <ShieldCheck size={18} className="text-[#D4AF37] shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold uppercase tracking-wider text-[11px] text-[#D4AF37] font-mono">
-            Frontend Demonstration Notice
-          </p>
-          <p className="text-[11px] leading-relaxed text-gray-400">
-            This transaction was conducted in demonstration mode. No real payment card details were collected or processed, and no commercial shipment has been dispatched.
-          </p>
-        </div>
-      </div>
-
-      {/* Order Reference Header Box */}
-      <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xs border border-white/15">
+      {/* Meta Strip */}
+      <div className="p-4 sm:p-5 bg-[#171717] border border-[#292929] grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
         <div>
-          <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-mono block">
-            DEMO ORDER REFERENCE
-          </span>
-          <span className="font-mono text-xl sm:text-2xl font-bold text-white tracking-wider block mt-0.5">
-            {orderNumber}
-          </span>
-          <span className="text-[11px] text-gray-400 font-mono block mt-1">
-            Logged on: {formattedDate}
-          </span>
+          <span className="text-[10px] text-[#A6A6A6] uppercase block">ORDER REF</span>
+          <span className="font-bold text-[#F5F5F5] truncate block">{orderNumber}</span>
         </div>
-
-        <div className="sm:text-right">
-          <span className="text-[10px] uppercase tracking-widest text-gray-400 font-mono block">
-            FULFILLMENT STATUS
-          </span>
-          <span className="inline-block gold-gradient-bg text-[#08090D] font-bold px-3 py-1 text-[10px] font-mono uppercase tracking-widest mt-1">
-            In Atelier Preparation
-          </span>
+        <div>
+          <span className="text-[10px] text-[#A6A6A6] uppercase block">DISPATCH DATE</span>
+          <span className="text-[#F5F5F5]">{formattedDate}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-[#A6A6A6] uppercase block">PAYMENT PROTOCOL</span>
+          <span className="text-[#F5F5F5] uppercase">CASH ON DELIVERY</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-[#A6A6A6] uppercase block">TOTAL AMOUNT</span>
+          <span className="font-bold text-[#B8FF00]">{formatCurrency(total)}</span>
         </div>
       </div>
 
-      {/* Two-Column Grid: Customer Details & Items Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Customer & Shipping Summary */}
-        <div className="md:col-span-5 space-y-6">
-          {/* Shipping Address */}
-          {/* Shipping Address */}
-          <div className="glass-panel p-6 space-y-3 text-xs rounded-xs border-white/10">
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
-              Delivery Destination
-            </h3>
-            <div className="space-y-1.5 text-gray-300">
-              <p className="font-semibold text-sm text-white">{customerName}</p>
-              <p>{shippingAddress}</p>
-              <p>{shippingCity}, {shippingState} — {shippingPostalCode}</p>
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Bespoke Courier</p>
-            </div>
-            <div className="pt-3 border-t border-white/10 space-y-1 text-gray-400 font-mono">
-              <p className="flex items-center gap-2">
-                <Mail size={13} className="text-[#D4AF37]" />
-                <span>{customerEmail}</span>
-              </p>
-              {customerPhone && (
-                <p className="flex items-center gap-2">
-                  <Phone size={13} className="text-[#D4AF37]" />
-                  <span>{customerPhone}</span>
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Logistics Courier Notice */}
-          <div className="glass-panel p-5 space-y-2 text-xs rounded-xs border-white/10">
-            <div className="flex items-center gap-2 text-[#D4AF37]">
-              <Truck size={16} />
-              <span className="font-semibold uppercase tracking-wider text-[11px] font-mono">Courier Transit</span>
-            </div>
-            <p className="text-gray-400 text-[11px] leading-relaxed font-mono">
-              Dispatched with insured air courier. Estimated arrival in 2–4 business days. Signature required on handover.
-            </p>
-          </div>
+      {/* Items Breakdown */}
+      <div className="bg-[#111111] p-6 sm:p-8 border border-[#292929] space-y-6">
+        <div className="flex items-center justify-between border-b border-[#292929] pb-4">
+          <h2 className="font-['Oswald'] uppercase text-lg font-bold tracking-wider text-[#F5F5F5]">
+            ACQUIRED SILHOUETTES ({totalItemsCount})
+          </h2>
+          <span className="text-xs font-mono text-[#A6A6A6]">VERIFIED STOCK RESERVATION</span>
         </div>
 
-        {/* Right Column: Ordered Items & Financial Breakdown */}
-        <div className="md:col-span-7 space-y-6">
-          <div className="glass-panel-gold bg-[#0E1018]/90 p-6 sm:p-8 space-y-6 rounded-xs border border-white/15">
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#D4AF37] font-semibold border-b border-white/10 pb-2">
-              Allocated Pieces ({totalItemsCount})
-            </h3>
-
-            {/* Items List */}
-            <div className="divide-y divide-white/10">
-              {normalizedItems.map((item, idx) => (
-                <div key={idx} className="py-4 flex gap-4 items-center">
-                  <div className="w-16 h-20 bg-[#121522] border border-white/10 overflow-hidden shrink-0">
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover object-top"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600">
-                        <ShoppingBag size={20} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-serif text-base text-white truncate">
-                      {item.name}
-                    </h4>
-                    <p className="text-[11px] text-gray-400 font-mono">
-                      {item.size && `Size: ${item.size}`}{item.color && ` • Color: ${item.color}`} • Qty: {item.quantity}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-serif text-sm font-semibold text-white block">
-                      {formatCurrency(item.price * item.quantity)}
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-mono">
-                      {formatCurrency(item.price)} each
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Financial Breakdown */}
-            <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
-              <div className="flex justify-between">
-                <span>Merchandise Subtotal</span>
-                <span className="font-serif text-base font-semibold text-white">{formatCurrency(subtotal)}</span>
+        <div className="divide-y divide-[#292929]">
+          {normalizedItems.map((item, idx) => (
+            <div key={idx} className="py-4 flex gap-4 items-center">
+              <div className="w-16 h-20 bg-[#171717] border border-[#292929] overflow-hidden shrink-0">
+                <img
+                  src={item.image || 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'}
+                  alt={item.name}
+                  className="w-full h-full object-cover object-top"
+                />
               </div>
-
-              {discount > 0 && (
-                <div className="flex justify-between text-[#D4AF37] font-medium font-mono">
-                  <span>Privilege Savings</span>
-                  <span>-{formatCurrency(discount)}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between">
-                <span>White-Glove Courier Delivery</span>
-                <span className="font-mono text-xs">
-                  {shipping === 0 ? (
-                    <span className="text-emerald-400 font-semibold uppercase text-[11px]">Complimentary</span>
-                  ) : (
-                    formatCurrency(shipping)
-                  )}
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="font-['Syne'] uppercase text-sm font-bold text-[#F5F5F5] truncate">{item.name}</p>
+                <p className="text-xs text-[#A6A6A6] font-mono">
+                  SIZE: <span className="text-[#F5F5F5]">{item.size}</span> {item.color && `• COLOR: ${item.color}`}
+                </p>
+                <p className="text-[11px] text-[#A6A6A6] font-mono">QTY: {item.quantity}</p>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-sm font-bold text-[#F5F5F5]">
+                  {formatCurrency(item.price * item.quantity)}
                 </span>
               </div>
-
-              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-base font-semibold text-white">
-                <span>Total Authorized</span>
-                <span className="font-serif text-2xl text-white">{formatCurrency(total)}</span>
-              </div>
             </div>
+          ))}
+        </div>
+
+        {/* Ledger */}
+        <div className="border-t border-[#292929] pt-4 space-y-2 text-xs font-mono">
+          <div className="flex justify-between text-[#A6A6A6]">
+            <span>SUBTOTAL</span>
+            <span className="text-[#F5F5F5]">{formatCurrency(subtotal)}</span>
+          </div>
+
+          {discount > 0 && (
+            <div className="flex justify-between text-[#B8FF00]">
+              <span>PROMO PRIVILEGE</span>
+              <span>-{formatCurrency(discount)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between text-[#A6A6A6]">
+            <span>STANDARD EXPRESS COURIER</span>
+            <span className={shipping === 0 ? 'text-[#B8FF00] font-bold' : 'text-[#F5F5F5]'}>
+              {shipping === 0 ? 'FREE' : formatCurrency(shipping)}
+            </span>
+          </div>
+
+          <div className="border-t border-[#292929] pt-3 flex justify-between items-baseline">
+            <span className="font-['Oswald'] text-sm uppercase tracking-wider font-bold text-[#F5F5F5]">
+              FINAL DISPATCH TOTAL
+            </span>
+            <span className="font-mono text-2xl font-bold text-[#F5F5F5]">
+              {formatCurrency(total)}
+            </span>
           </div>
         </div>
       </div>
 
+      {/* Delivery Destination */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 bg-[#171717] border border-[#292929] space-y-3">
+          <h3 className="font-['Oswald'] uppercase text-sm font-bold tracking-wider text-[#F5F5F5] flex items-center gap-2">
+            <Truck size={15} className="text-[#B8FF00]" />
+            <span>DELIVERY DESTINATION</span>
+          </h3>
+          <p className="text-xs text-[#A6A6A6] font-mono leading-relaxed">
+            <strong className="text-[#F5F5F5] block mb-1">{customerName}</strong>
+            {shippingAddress}<br />
+            {shippingCity}{shippingState ? `, ${shippingState}` : ''} {shippingPostalCode}<br />
+            {customerPhone && `Contact: ${customerPhone}`}
+          </p>
+        </div>
+
+        <div className="p-6 bg-[#171717] border border-[#292929] space-y-3">
+          <h3 className="font-['Oswald'] uppercase text-sm font-bold tracking-wider text-[#F5F5F5] flex items-center gap-2">
+            <Mail size={15} className="text-[#B8FF00]" />
+            <span>DISPATCH NOTIFICATIONS</span>
+          </h3>
+          <p className="text-xs text-[#A6A6A6] font-mono leading-relaxed">
+            Automated tracking dispatches will be delivered to <strong className="text-[#F5F5F5]">{customerEmail}</strong> once the courier scans your package barcode.
+          </p>
+        </div>
+      </div>
 
       {/* Action Buttons */}
-      <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <Button variant="primary" size="lg" to="/shop" icon={ArrowRight} iconPosition="right">
-          Continue Browsing Repertoire
-        </Button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#292929]">
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex items-center gap-2 glass-panel border-white/20 px-6 py-3.5 text-xs uppercase tracking-widest text-gray-300 hover:text-white hover:border-[#D4AF37] transition-colors cursor-pointer font-mono"
+          className="inline-flex items-center gap-2 px-5 py-3 border border-[#292929] bg-[#111111] hover:bg-[#171717] text-[#F5F5F5] font-['Oswald'] text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer w-full sm:w-auto justify-center"
         >
           <Printer size={14} />
-          <span>Print Order Dossier</span>
+          <span>PRINT DISPATCH RECEIPT</span>
         </button>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Link
+            to="/account"
+            className="px-5 py-3 border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] text-[#F5F5F5] font-['Oswald'] text-xs uppercase tracking-wider font-bold transition-colors text-center flex-1 sm:flex-none"
+          >
+            VIEW IN DOSSIER
+          </Link>
+          <Link
+            to="/shop"
+            className="px-6 py-3 bg-[#B8FF00] hover:bg-[#cbfb27] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold transition-all text-center flex-1 sm:flex-none"
+          >
+            CONTINUE SHOPPING
+          </Link>
+        </div>
       </div>
     </PageTransition>
   )

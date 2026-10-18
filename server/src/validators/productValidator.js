@@ -30,7 +30,7 @@ export const createProductSchema = z.object({
   slug: z.string().trim().min(3, 'Unique slug is required').optional(),
   subtitle: z.string().trim().optional().nullable(),
   description: z.string().trim().min(10, 'Description must be at least 10 characters'),
-  categoryId: z.string().uuid('Valid category UUID is required'),
+  categoryId: z.string().min(1, 'Category identifier is required'),
   basePrice: z.coerce.number().positive('Base price must be positive'),
   comparisonPrice: z.coerce.number().positive().optional().nullable(),
   isActive: z.boolean().default(true),
@@ -42,11 +42,14 @@ export const createProductSchema = z.object({
   details: z.array(z.string()).default([]),
   images: z
     .array(
-      z.object({
-        imageUrl: z.string().url('Valid image URL required'),
-        altText: z.string().optional().nullable(),
-        displayOrder: z.number().int().default(0),
-      })
+      z.union([
+        z.string().url('Valid image URL required'),
+        z.object({
+          imageUrl: z.string().url('Valid image URL required'),
+          altText: z.string().optional().nullable(),
+          displayOrder: z.number().int().default(0),
+        }),
+      ])
     )
     .optional()
     .default([]),

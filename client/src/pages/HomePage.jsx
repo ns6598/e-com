@@ -1,960 +1,555 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useMotionValue, useSpring } from 'framer-motion'
-import { ArrowUpRight, ArrowRight, Check, Copy, Sparkles, Eye, ZoomIn, ShieldCheck, Compass, MoveDown } from 'lucide-react'
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion'
+import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Flame, ShieldAlert, Sparkles } from 'lucide-react'
 import { PRODUCTS } from '../data/products'
 import productService from '../services/productService'
 import ProductCard from '../components/product/ProductCard'
 import ProductQuickViewModal from '../components/product/ProductQuickViewModal'
-import Button from '../components/ui/Button'
 import NewsletterForm from '../components/common/NewsletterForm'
-import { formatCurrency } from '../utils/formatters'
-import PageTransition from '../components/motion/PageTransition'
-import TextReveal from '../components/motion/TextReveal'
-import FadeInView from '../components/motion/FadeInView'
-import TiltCard from '../components/motion/TiltCard'
 
-const RUNWAY_LOOKS = [
-  {
-    id: 'look-01',
-    lookNumber: 'LOOK 01',
-    title: 'The Parisian Cocoon',
-    subtitle: 'Virgin Merino Wool & Architectural Volume',
-    image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=88',
-    model: '179cm / Size S (EU 36)',
-    location: 'Palais de Tokyo, Paris',
-    description: 'Sculpted from 720 GSM double-faced virgin wool, featuring dropped structural shoulders that contour into an exaggerated cocoon envelope.',
-    featuredProductId: 'aur-01',
-    hotspots: [
-      {
-        x: 48,
-        y: 38,
-        label: 'Cocoon Collar',
-        detail: 'Exaggerated notched lapel with storm tab',
-      },
-      {
-        x: 52,
-        y: 65,
-        label: 'Double-Faced Seam',
-        detail: 'Unlined Biella merino with raw-edge finish',
-      },
-    ],
-  },
-  {
-    id: 'look-02',
-    lookNumber: 'LOOK 02',
-    title: 'Deconstructed Modernity',
-    subtitle: 'Asymmetric GOTS Poplin & Linear Drape',
-    image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1600&q=88',
-    model: '181cm / Size M (EU 38)',
-    location: 'Fondazione Prada, Milan',
-    description: 'High-density crisp organic poplin with prolonged knuckle-length cuffs and an architectural asymmetric bib.',
-    featuredProductId: 'aur-02',
-    hotspots: [
-      {
-        x: 46,
-        y: 35,
-        label: 'Asymmetric Storm Bib',
-        detail: '140 GSM high-density organic cotton poplin',
-      },
-      {
-        x: 58,
-        y: 60,
-        label: 'Elongated Cuffs',
-        detail: 'Tailored to gather effortlessly over the knuckles',
-      },
-    ],
-  },
-  {
-    id: 'look-03',
-    lookNumber: 'LOOK 03',
-    title: 'Silk Velvet & Shadow',
-    subtitle: 'Fluid Nocturnal Column with Raw Brass Accents',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1600&q=88',
-    model: '178cm / Size S (EU 36)',
-    location: 'Roppongi Atelier, Tokyo',
-    description: 'Mulberry silk velvet that absorbs and refracts ambient nocturnal light, cut on the true bias for monumental kinetic movement.',
-    featuredProductId: 'aur-04',
-    hotspots: [
-      {
-        x: 50,
-        y: 32,
-        label: 'Bias Cut Bodice',
-        detail: 'Crafted in Lyon, France from pure silk velvet',
-      },
-      {
-        x: 52,
-        y: 72,
-        label: 'Floor Column Hem',
-        detail: 'Weighted perimeter ensuring a sharp vertical drape',
-      },
-    ],
-  },
-  {
-    id: 'look-04',
-    lookNumber: 'LOOK 04',
-    title: 'Brutalist Monolith Blazer',
-    subtitle: 'Structured Shoulders & Tuscan Bridle Leather',
-    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=88',
-    model: '183cm / Size L (EU 40)',
-    location: 'Chelsea Gallery, New York',
-    description: 'A sculptural exploration of power tailoring with sharp square shoulders, concealed double-breasted placket, and deep jet pockets.',
-    featuredProductId: 'aur-07',
-    hotspots: [
-      {
-        x: 45,
-        y: 38,
-        label: 'Sculpted Shoulder',
-        detail: 'Multi-layer horsehair canvas internal structure',
-      },
-      {
-        x: 54,
-        y: 68,
-        label: 'Flapless Jet Pockets',
-        detail: 'Ultra-clean architectural front silhouette',
-      },
-    ],
-  },
+// Configurable Promotional Strip Marquee Ticker Items
+const PROMO_STRIP_ITEMS = [
+  'NEW SEASON // NEW ATTITUDE',
+  'LIMITED DROP // AVAILABLE NOW',
+  'SUBVERSIVE DARKWEAR & CYBER GRUNGE',
+  'FREE EXPRESS DISPATCH OVER ₹2,999',
+  'STYLE WITHOUT BOUNDARIES',
+  'NO RESTOCKS // ARCHIVE PIECES',
 ]
 
 export default function HomePage() {
   const [liveProducts, setLiveProducts] = useState(PRODUCTS)
+  const [selectedGridCategory, setSelectedGridCategory] = useState('ALL')
+  const [quickViewProduct, setQuickViewProduct] = useState(null)
 
+  // Horizontal scroll rail ref
+  const railRef = useRef(null)
+
+  // Fetch live products from backend API
   useEffect(() => {
     let isMounted = true
     productService
-      .getProducts({ limit: 12 })
+      .getProducts({ limit: 16 })
       .then((res) => {
         if (isMounted && res.items?.length > 0) {
           setLiveProducts(res.items)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Fallback to static PRODUCTS if offline
+      })
     return () => {
       isMounted = false
     }
   }, [])
 
-  const newArrivals = (liveProducts.filter((p) => p.isNew).length > 0
-    ? liveProducts.filter((p) => p.isNew)
-    : liveProducts
-  ).slice(0, 4)
-
-  const bestSellers = (liveProducts.filter((p) => p.isFeatured || p.isBestSeller).length > 0
-    ? liveProducts.filter((p) => p.isFeatured || p.isBestSeller)
-    : liveProducts.slice(4)
-  ).slice(0, 4)
-
-  const [activeLookIndex, setActiveLookIndex] = useState(0)
-  const [activeHotspot, setActiveHotspot] = useState(null)
-  const [quickViewProduct, setQuickViewProduct] = useState(null)
-  const [copiedCode, setCopiedCode] = useState(false)
-
-  // Mouse-driven subtle parallax for hero artwork
-  const heroMouseX = useMotionValue(0)
-  const heroMouseY = useMotionValue(0)
-  const heroParallaxX = useSpring(heroMouseX, { damping: 28, stiffness: 100 })
-  const heroParallaxY = useSpring(heroMouseY, { damping: 28, stiffness: 100 })
+  // Pointer movement tracking for Hero Parallax (restrained for desktop, disabled on touch)
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+  const springConfig = { damping: 30, stiffness: 120 }
+  const heroImageX = useSpring(useTransform(mouseX, [-0.5, 0.5], [-10, 10]), springConfig)
+  const heroImageY = useSpring(useTransform(mouseY, [-0.5, 0.5], [-10, 10]), springConfig)
 
   const handleHeroMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const x = (e.clientX - (rect.left + rect.width / 2)) / 32
-    const y = (e.clientY - (rect.top + rect.height / 2)) / 32
-    heroMouseX.set(x)
-    heroMouseY.set(y)
+    const x = (e.clientX - rect.left) / rect.width - 0.5
+    const y = (e.clientY - rect.top) / rect.height - 0.5
+    mouseX.set(x)
+    mouseY.set(y)
   }
 
-  const handleHeroMouseLeave = () => {
-    heroMouseX.set(0)
-    heroMouseY.set(0)
-  }
+  // Scroll parallax for campaign section
+  const campaignRef = useRef(null)
+  const { scrollYProgress: campaignProgress } = useScroll({
+    target: campaignRef,
+    offset: ['start end', 'end start'],
+  })
+  const campaignParallaxY = useTransform(campaignProgress, [0, 1], ['-6%', '6%'])
 
-  const activeLook = RUNWAY_LOOKS[activeLookIndex]
-  const lookProduct = PRODUCTS.find((p) => p.id === activeLook.featuredProductId) || PRODUCTS[0]
-
-  const handleCopyCode = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText('AUREVA15')
+  // Rail scroll handler
+  const scrollRail = (direction) => {
+    if (railRef.current) {
+      const scrollAmount = railRef.current.clientWidth * 0.75
+      railRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      })
     }
-    setCopiedCode(true)
-    setTimeout(() => setCopiedCode(false), 2500)
   }
+
+  // Filtered products for Section 5 Discovery Grid
+  const filteredGridProducts = liveProducts.filter((p) => {
+    if (selectedGridCategory === 'ALL') return true
+    if (selectedGridCategory === 'NEW ARRIVALS') return p.isNew
+    if (selectedGridCategory === 'SALE') return p.isSale || (p.originalPrice && p.originalPrice > p.price)
+    return p.category?.toUpperCase() === selectedGridCategory || p.department?.toUpperCase() === selectedGridCategory
+  })
 
   return (
-    <PageTransition className="space-y-28 sm:space-y-36">
-      {/* =========================================================================
-          HERO SECTION: Neo-Luxury Noir Runway Campaign
-          Interactive mouse parallax, staggered typography, atmospheric wordmark
-          ========================================================================= */}
+    <div className="w-full bg-[#090909] text-[#F5F5F5] overflow-hidden">
+      {/* ========================================================
+          SECTION 1 — HERO
+          Full-width dark fashion hero with pointer motion
+      ======================================================== */}
       <section
         onMouseMove={handleHeroMouseMove}
-        onMouseLeave={handleHeroMouseLeave}
-        className="relative px-4 sm:px-6 lg:px-8 pt-4 sm:pt-10 overflow-hidden"
-        aria-label="Hero Campaign"
+        className="relative min-h-[92vh] lg:min-h-screen flex flex-col justify-between pt-20 pb-12 px-4 sm:px-8 md:px-12 lg:px-16 border-b border-[#292929] overflow-hidden bg-[#090909]"
       >
-        {/* Cinematic Watermark Wordmark */}
-        <div
-          aria-hidden="true"
-          className="absolute -top-10 sm:-top-16 left-1/2 -translate-x-1/2 select-none pointer-events-none opacity-[0.035] overflow-hidden whitespace-nowrap z-0"
-        >
-          <motion.span
-            initial={{ letterSpacing: '0.4em', opacity: 0 }}
-            animate={{ letterSpacing: '0.65em', opacity: 1 }}
-            transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
-            className="font-serif text-[19vw] font-bold text-white tracking-[0.65em] leading-none block"
+        {/* Background Dark Atmosphere Image with Parallax */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <motion.div
+            style={{ x: heroImageX, y: heroImageY }}
+            className="w-full h-[110%] -top-[5%] -left-[5%] relative"
           >
-            AUREVA
-          </motion.span>
+            <img
+              src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=2200&q=90"
+              alt="AUREVA Dark Alternative Runway"
+              className="w-full h-full object-cover object-top opacity-40 filter contrast-125 brightness-90"
+            />
+            {/* Dark vignette overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#090909] via-[#090909]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#090909] via-[#090909]/70 to-transparent" />
+          </motion.div>
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          {/* Top Overline and Coordinates */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-4 mb-8 sm:mb-12 gap-2">
-            <FadeInView direction="down" delay={0.1}>
-              <span className="tag-overline text-[#D4AF37] font-mono">AUTUMN / WINTER 2026</span>
-              <p className="text-xs uppercase tracking-[0.25em] text-gray-400 mt-1 font-mono">
-                STUDIO RUNWAY — MONOGRAPH NO. 04
-              </p>
-            </FadeInView>
-            <FadeInView direction="down" delay={0.2} className="text-right hidden sm:block">
-              <span className="text-[11px] font-mono tracking-widest text-gray-500">
-                48.8566° N, 2.3522° E (PARIS ATELIER)
-              </span>
-            </FadeInView>
-          </div>
+        {/* Top Editorial Monograph Metadata */}
+        <div className="relative z-10 flex items-center justify-between text-[11px] tracking-[0.25em] uppercase font-mono text-[#A6A6A6]">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-[#B8FF00] inline-block shadow-[0_0_8px_#B8FF00]" />
+            <span>SEASON MMXXVI // DROP 01</span>
+          </span>
+          <span className="hidden md:inline-block">DARK ALTERNATIVE READY-TO-WEAR</span>
+          <span>PARIS • BERLIN • TOKYO</span>
+        </div>
 
-          {/* Hero Main Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
-            {/* Left Narrative Column */}
-            <div className="lg:col-span-5 space-y-7 sm:space-y-9 order-2 lg:order-1">
-              <div className="space-y-4">
-                <FadeInView direction="up" delay={0.15}>
-                  <div className="inline-flex items-center gap-2 glass-panel border-[#D4AF37]/30 text-white text-[10px] tracking-[0.28em] uppercase px-3 py-1 font-mono">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-                    <span className="text-[#D4AF37]">RUNWAY MONOGRAPH</span>
-                  </div>
-                </FadeInView>
-
-                {/* Staggered Word Reveal Headline */}
-                <h1 className="editorial-title text-4xl sm:text-6xl xl:text-7xl font-serif text-white tracking-tight leading-[0.94]">
-                  <TextReveal text="STYLE WITHOUT" delay={0.2} />
-                  <br />
-                  <span className="italic font-light gold-gradient-text inline-block">
-                    <TextReveal text="BOUNDARIES." delay={0.35} />
-                  </span>
-                </h1>
-              </div>
-
-              <FadeInView direction="up" delay={0.3}>
-                <p className="font-serif text-lg sm:text-xl text-gray-300 leading-relaxed font-light max-w-lg">
-                  An architectural dialogue between sculpted structure and effortless drape — handcrafted for individuals who inhabit space with quiet intention.
-                </p>
-              </FadeInView>
-
-              <FadeInView direction="up" delay={0.4} className="pt-2 flex flex-wrap gap-4 items-center">
-                <Button variant="primary" size="lg" to="/shop" magnetic>
-                  DISCOVER THE COLLECTION
-                </Button>
-                <Button variant="secondary" size="lg" to="/about">
-                  THE MANIFESTO
-                </Button>
-              </FadeInView>
-
-              {/* Atelier Specs in Liquid Glass */}
-              <FadeInView direction="up" delay={0.5}>
-                <div className="grid grid-cols-3 gap-3 pt-6 border-t border-white/10">
-                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
-                    <span className="block font-serif text-xl sm:text-2xl text-white">100%</span>
-                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Virgin Merino</span>
-                  </div>
-                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
-                    <span className="block font-serif text-xl sm:text-2xl text-[#D4AF37]">04</span>
-                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Monograph Edit</span>
-                  </div>
-                  <div className="glass-panel p-3 border-white/5 hover:border-[#D4AF37]/30 transition-colors">
-                    <span className="block font-serif text-xl sm:text-2xl text-white">Ltd</span>
-                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono block mt-0.5">Numbered Batches</span>
-                  </div>
-                </div>
-              </FadeInView>
-            </div>
-
-            {/* Right Monumental Visual Column with Subtle Mouse Parallax */}
-            <div className="lg:col-span-7 order-1 lg:order-2">
-              <TiltCard maxTilt={5} scaleOnHover={1.01} className="relative">
-                {/* Main Hero Photograph with Liquid Glass Frame */}
-                <motion.div
-                  style={{ x: heroParallaxX, y: heroParallaxY }}
-                  className="relative aspect-[4/5] sm:aspect-[16/11] lg:aspect-[4/5] overflow-hidden bg-[#121522] border border-white/10 group shadow-2xl"
-                  data-cursor="explore"
-                >
-                  <img
-                    src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=88"
-                    alt="AUREVA Runway Campaign Look 01 Editorial Silhouette"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1400&q=85'
-                    }}
-                    className="w-full h-full object-cover object-top transition-transform duration-1000 ease-out group-hover:scale-104"
-                  />
-
-                  {/* Overlaid Look Information Plate in Frosted Glass */}
-                  <div className="absolute bottom-4 left-4 right-4 glass-panel bg-[#0B0D15]/85 backdrop-blur-xl p-4 text-white flex items-center justify-between border border-white/15">
-                    <div>
-                      <p className="text-[9px] uppercase tracking-[0.24em] text-[#D4AF37] font-mono">LOOK 01 / AUTUMN 2026</p>
-                      <p className="font-serif text-sm sm:text-base tracking-wide mt-0.5 text-gray-200">Sculptural Cocoon Silhouette in Biella Wool</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setQuickViewProduct(PRODUCTS.find(p => p.id === 'aur-01') || PRODUCTS[0])}
-                      className="p-2.5 gold-gradient-bg text-[#08090D] hover:opacity-90 transition-opacity cursor-pointer shadow-md"
-                      title="Quick inspect this piece"
-                      aria-label="Inspect look details"
-                    >
-                      <Eye size={18} />
-                    </button>
-                  </div>
-                </motion.div>
-
-                {/* Overlaid Floating Batch Tag */}
-                <div className="hidden sm:block absolute -top-4 -right-4 glass-panel-gold bg-[#0E1018] px-4 py-2 text-[10px] tracking-[0.25em] uppercase font-mono text-[#D4AF37] shadow-xl">
-                  EDITION: 42 PIECES WORLDWIDE
-                </div>
-              </TiltCard>
-            </div>
-          </div>
-
-          {/* Animated Scroll Down Indicator */}
-          <div className="pt-12 sm:pt-16 flex items-center justify-between text-xs font-mono text-gray-500 border-t border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-4 border border-white/20 rounded-full flex justify-center p-0.5">
-                <motion.div
-                  animate={{ y: [0, 9, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-                  className="h-1.5 w-1 rounded-full bg-[#D4AF37]"
-                />
-              </div>
-              <span className="text-[10px] tracking-[0.24em] uppercase text-gray-400">SCROLL TO IMMERSE</span>
-            </div>
-            <span className="hidden sm:inline text-[10px] tracking-[0.26em] text-gray-500 font-mono">
-              PARIS ATELIER • ALLOCATIONS ACTIVE
+        {/* Hero Typography & Intent */}
+        <div className="relative z-10 my-auto py-12 max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span className="inline-block px-3 py-1 bg-[#171717] border border-[#292929] font-mono text-xs uppercase tracking-widest text-[#B8FF00] mb-4">
+              NEW DROP AVAILABLE NOW
             </span>
+            <h1 className="font-display font-extrabold text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-[-0.03em] leading-[0.92] uppercase text-[#F5F5F5]">
+              BOLD TEXTURE.
+              <br />
+              <span className="text-[#B8FF00]">DARK ATTITUDE.</span>
+              <br />
+              YOUR STYLE.
+            </h1>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+            className="mt-6 text-base md:text-lg max-w-xl text-[#A6A6A6] font-light leading-relaxed tracking-wide"
+          >
+            Subversive tailoring, heavy metal hardware, and deconstructed silhouettes crafted for those who walk in shadows. Style without boundaries.
+          </motion.p>
+
+          {/* Action CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.35, ease: 'easeOut' }}
+            className="mt-8 flex flex-wrap items-center gap-4 sm:gap-5"
+          >
+            <Link
+              to="/shop?sort=newest"
+              data-cursor="explore"
+              className="alt-btn-accent group"
+            >
+              <span>SHOP NEW ARRIVALS</span>
+              <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+
+            <Link
+              to="/shop"
+              data-cursor="explore"
+              className="alt-btn-secondary group"
+            >
+              <span>EXPLORE COLLECTION</span>
+              <ArrowUpRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* Small Scroll Indicator */}
+        <div className="relative z-10 flex items-center justify-between pt-6 border-t border-[#292929] text-xs font-mono text-[#737373] tracking-[0.2em] uppercase">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-px bg-[#B8FF00]" />
+            <span className="text-[#A6A6A6]">SCROLL TO EXPLORE ARCHIVE</span>
+          </div>
+          <span className="hidden sm:inline-block">NO RESTOCKS ONCE CLAIMED</span>
+        </div>
+      </section>
+
+      {/* ========================================================
+          SECTION 2 — BOLD PROMOTIONAL STRIP (TICKER)
+          Horizontal movement with large bold typography
+      ======================================================== */}
+      <section className="bg-[#B8FF00] text-[#090909] py-3.5 overflow-hidden border-y border-[#B8FF00] select-none">
+        <div className="animate-ticker flex items-center gap-8 font-condensed font-bold text-base sm:text-lg uppercase tracking-wider whitespace-nowrap">
+          {PROMO_STRIP_ITEMS.concat(PROMO_STRIP_ITEMS).map((item, idx) => (
+            <React.Fragment key={idx}>
+              <span className="flex items-center gap-2">
+                <span>{item}</span>
+                <span className="text-[#090909] opacity-60">✦</span>
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          SECTION 3 — LARGE CATEGORY BLOCKS
+          WOMEN, MEN, ACCESSORIES, SALE with hover zoom & dark overlay
+      ======================================================== */}
+      <section className="py-20 md:py-28 px-4 sm:px-8 md:px-12 lg:px-16 border-b border-[#292929] bg-[#090909]">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 pb-4 border-b border-[#292929]">
+          <div>
+            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#B8FF00] block mb-1">
+              CATEGORY ARCHIVES
+            </span>
+            <h2 className="font-display font-bold text-3xl md:text-5xl uppercase tracking-tight text-[#F5F5F5]">
+              EXPLORE BY SECTOR
+            </h2>
+          </div>
+          <Link
+            to="/shop"
+            data-cursor="explore"
+            className="mt-4 sm:mt-0 text-xs font-mono uppercase tracking-widest text-[#A6A6A6] hover:text-[#B8FF00] transition-colors flex items-center gap-1.5"
+          >
+            <span>VIEW ALL APPAREL</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        {/* 4 Category Blocks Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[
+            {
+              title: 'WOMEN',
+              tag: 'SECTOR 01',
+              desc: 'Corsetry, deconstructed knitwear, and floor-sweeping cloaks.',
+              image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=85',
+              link: '/shop?category=women',
+            },
+            {
+              title: 'MEN',
+              tag: 'SECTOR 02',
+              desc: 'Distressed denim, structured overcoats, and harness jackets.',
+              image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=85',
+              link: '/shop?category=men',
+            },
+            {
+              title: 'ACCESSORIES',
+              tag: 'SECTOR 03',
+              desc: 'Solid silver pendants, studded belts, and heavy combat boots.',
+              image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1200&q=85',
+              link: '/shop?category=accessories',
+            },
+            {
+              title: 'SALE',
+              tag: 'FINAL PIECES',
+              desc: 'Archived capsule pieces with discounts up to 30% off.',
+              image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1200&q=85',
+              link: '/shop?filter=sale',
+              isSale: true,
+            },
+          ].map((cat) => (
+            <div
+              key={cat.title}
+              className="group relative overflow-hidden bg-[#171717] border border-[#292929] hover:border-[#B8FF00] transition-colors duration-300 flex flex-col justify-between"
+            >
+              <Link
+                to={cat.link}
+                data-cursor="explore"
+                className="block relative aspect-[4/5] overflow-hidden"
+              >
+                <img
+                  src={cat.image}
+                  alt={`AUREVA ${cat.title}`}
+                  className="w-full h-full object-cover object-center filter contrast-110 brightness-90 group-hover:scale-108 transition-transform duration-700 ease-out"
+                />
+                {/* Dark Vignette Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#090909] via-[#090909]/40 to-transparent group-hover:via-[#090909]/20 transition-all duration-300" />
+
+                {/* Badge */}
+                <div className="absolute top-3 left-3">
+                  <span
+                    className={`font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border ${
+                      cat.isSale
+                        ? 'bg-[#8B0000] text-white border-[#8B0000]'
+                        : 'bg-[#090909]/80 text-[#B8FF00] border-[#292929]'
+                    }`}
+                  >
+                    {cat.tag}
+                  </span>
+                </div>
+
+                {/* Bottom Title & Content */}
+                <div className="absolute inset-x-0 bottom-0 p-5 flex flex-col justify-end">
+                  <h3 className="font-display font-extrabold text-3xl uppercase tracking-tight text-[#F5F5F5] group-hover:text-[#B8FF00] group-hover:-translate-y-1 transition-all duration-200">
+                    {cat.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#A6A6A6] font-light leading-relaxed line-clamp-2">
+                    {cat.desc}
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 text-xs font-condensed font-bold uppercase tracking-wider text-[#F5F5F5] group-hover:text-[#B8FF00] transition-colors">
+                    <span>SHOP NOW</span>
+                    <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          SECTION 4 — HORIZONTAL PRODUCT RAIL
+          Desktop horizontal rail + touch scrollable mobile rail
+      ======================================================== */}
+      <section className="py-20 md:py-28 px-4 sm:px-8 md:px-12 lg:px-16 border-b border-[#292929] bg-[#090909]">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8">
+          <div>
+            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#B8FF00] block mb-1">
+              RUNWAY MONOGRAPHS
+            </span>
+            <h2 className="font-display font-bold text-3xl md:text-5xl uppercase tracking-tight text-[#F5F5F5]">
+              FEATURED DISPATCHES
+            </h2>
+          </div>
+
+          {/* Desktop Left/Right Scroll Buttons */}
+          <div className="hidden sm:flex items-center gap-2 mt-4 sm:mt-0">
+            <button
+              type="button"
+              onClick={() => scrollRail('left')}
+              aria-label="Scroll rail left"
+              className="p-3 border border-[#292929] bg-[#111111] text-[#F5F5F5] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollRail('right')}
+              aria-label="Scroll rail right"
+              className="p-3 border border-[#292929] bg-[#111111] text-[#F5F5F5] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-colors cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Rail Container */}
+        <div
+          ref={railRef}
+          className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory"
+          style={{ scrollBehavior: 'smooth' }}
+        >
+          {liveProducts.slice(0, 8).map((product) => (
+            <div
+              key={`rail-${product.id}`}
+              className="w-[260px] sm:w-[290px] md:w-[320px] shrink-0 snap-start"
+            >
+              <ProductCard
+                product={product}
+                showQuickAdd={true}
+                onQuickView={(p) => setQuickViewProduct(p)}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          SECTION 5 — FULLSCREEN VISUAL CAMPAIGN
+          Parallax fashion visual with overlay text
+      ======================================================== */}
+      <section
+        ref={campaignRef}
+        className="relative h-[75vh] md:h-[85vh] flex items-center justify-center overflow-hidden border-b border-[#292929]"
+      >
+        <motion.div
+          style={{ y: campaignParallaxY }}
+          className="absolute inset-0 w-full h-[120%] -top-[10%] pointer-events-none"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=2200&q=90"
+            alt="AUREVA Campaign Editorial"
+            className="w-full h-full object-cover object-center filter contrast-125 brightness-75"
+          />
+          <div className="absolute inset-0 bg-[#090909]/60" />
+        </motion.div>
+
+        {/* Campaign Editorial Overlay Content */}
+        <div className="relative z-10 text-center px-6 max-w-4xl text-[#F5F5F5]">
+          <span className="text-xs uppercase font-mono tracking-[0.35em] text-[#B8FF00] mb-4 block">
+            LIMITED DROP MMXXVI
+          </span>
+          <h2 className="font-display font-extrabold text-4xl sm:text-6xl md:text-7xl lg:text-8xl uppercase tracking-[-0.03em] leading-[0.95] text-white">
+            THE NEW
+            <br />
+            AUREVA
+            <br />
+            <span className="text-[#B8FF00]">COLLECTION</span>
+          </h2>
+
+          <p className="mt-6 text-sm md:text-base text-[#A6A6A6] font-light max-w-lg mx-auto">
+            Deconstructed silhouettes, heavy Biella wools, and raw metal closures made for uncompromising individuality.
+          </p>
+
+          <div className="mt-8">
+            <Link
+              to="/shop"
+              data-cursor="explore"
+              className="alt-btn-accent"
+            >
+              <span>DISCOVER THE COLLECTION</span>
+              <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* =========================================================================
-          SECTION 1: THE INTERACTIVE RUNWAY LOOKBOOK & STUDIO EXHIBITION
-          Interactive look tabs, visual hotspots, fabric specs, and quick inspect
-          ========================================================================= */}
-      <section id="lookbook" className="px-4 sm:px-6 lg:px-8 relative" aria-label="Runway Lookbook">
-        <div className="max-w-7xl mx-auto border-t border-white/10 pt-16 sm:pt-20">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#D4AF37] animate-ping" />
-                <span className="tag-overline text-[#D4AF37] font-mono">INTERACTIVE STUDIO EXHIBITION</span>
-              </div>
-              <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-                Runway Lookbook No. 04
-              </h2>
-            </div>
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-400 max-w-sm font-mono">
-              INTERACTIVE HOTSPOTS • CLICK PINS ON SILHOUETTES TO INSPECT WEAVE
-            </p>
+      {/* ========================================================
+          SECTION 6 — CLEAN PRODUCT GRID
+          4 cols desktop / 3 tablet / 2 mobile with category filters
+      ======================================================== */}
+      <section className="py-20 md:py-28 px-4 sm:px-8 md:px-12 lg:px-16 border-b border-[#292929] bg-[#090909]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
+          <div>
+            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#B8FF00] block mb-1">
+              DISCOVERY CATALOGUE
+            </span>
+            <h2 className="font-display font-bold text-3xl md:text-5xl uppercase tracking-tight text-[#F5F5F5]">
+              ALL ESSENTIALS
+            </h2>
           </div>
 
-          {/* Look Navigation Switcher Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 border-b border-white/10">
-            {RUNWAY_LOOKS.map((look, idx) => (
+          {/* Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-6 md:mt-0 font-condensed text-xs uppercase tracking-wider font-semibold">
+            {['ALL', 'WOMEN', 'MEN', 'ACCESSORIES', 'NEW ARRIVALS', 'SALE'].map((cat) => (
               <button
-                key={look.id}
+                key={cat}
                 type="button"
-                onClick={() => {
-                  setActiveLookIndex(idx)
-                  setActiveHotspot(null)
-                }}
-                className={`px-5 py-3 text-xs uppercase tracking-[0.2em] font-mono transition-all duration-300 cursor-pointer shrink-0 border ${
-                  activeLookIndex === idx
-                    ? 'glass-panel-gold border-[#D4AF37] text-white shadow-[0_0_20px_rgba(212,175,55,0.25)]'
-                    : 'glass-panel border-white/10 text-gray-400 hover:text-white hover:border-white/30'
+                onClick={() => setSelectedGridCategory(cat)}
+                className={`px-3.5 py-1.5 transition-all cursor-pointer border ${
+                  selectedGridCategory === cat
+                    ? 'border-[#B8FF00] bg-[#B8FF00] text-[#090909]'
+                    : 'border-[#292929] bg-[#111111] text-[#A6A6A6] hover:text-[#F5F5F5] hover:border-[#404040]'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={activeLookIndex === idx ? 'text-[#D4AF37] font-bold' : 'text-gray-500'}>
-                    0{idx + 1}
-                  </span>
-                  <span>{look.title}</span>
-                </div>
+                {cat}
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Interactive Look Main Stage */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left Monumental Look Visual with Interactive Hotspot Pins */}
-            <div className="lg:col-span-7 relative group">
-              <div className="relative aspect-[3/4] sm:aspect-[4/3] lg:aspect-[3/4] overflow-hidden bg-[#10131E] border border-white/10">
-                <img
-                  src={activeLook.image}
-                  alt={activeLook.title}
-                  className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-102"
-                />
+        {/* 4 Col Desktop / 3 Col Tablet / 2 Col Mobile Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {filteredGridProducts.slice(0, 8).map((product) => (
+            <ProductCard
+              key={`grid-${product.id}`}
+              product={product}
+              showQuickAdd={true}
+              onQuickView={(p) => setQuickViewProduct(p)}
+            />
+          ))}
+        </div>
 
-                {/* Hotspot Pins */}
-                {activeLook.hotspots.map((hs, i) => (
-                  <div
-                    key={i}
-                    className="absolute z-20"
-                    style={{ left: `${hs.x}%`, top: `${hs.y}%` }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveHotspot(activeHotspot === i ? null : i)}
-                      aria-label={`Inspect ${hs.label}`}
-                      className={`relative flex items-center justify-center h-8 w-8 rounded-full border transition-transform duration-200 cursor-pointer ${
-                        activeHotspot === i
-                          ? 'bg-[#D4AF37] text-[#08090D] border-white scale-110 shadow-[0_0_15px_rgba(212,175,55,0.8)]'
-                          : 'bg-[#08090D]/80 backdrop-blur-md text-[#D4AF37] border-[#D4AF37]/60 hover:scale-110 hover:border-[#D4AF37]'
-                      }`}
-                    >
-                      <span className="font-mono text-[10px] font-bold">0{i + 1}</span>
-                      <span className="absolute -inset-1 rounded-full border border-[#D4AF37] opacity-40 animate-ping" />
-                    </button>
-
-                    {/* Hotspot Tooltip Popover */}
-                    {activeHotspot === i && (
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-10 z-30 w-56 glass-panel-gold p-3 rounded-xs text-left animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between pb-1 border-b border-white/10">
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-[#D4AF37]">
-                            {hs.label}
-                          </span>
-                          <span className="text-[9px] text-gray-400 font-mono">SPEC</span>
-                        </div>
-                        <p className="text-[11px] text-gray-200 mt-1 font-light leading-snug">
-                          {hs.detail}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Look Location Badge */}
-                <div className="absolute top-4 left-4 glass-panel px-3 py-1 text-[9px] uppercase tracking-[0.22em] font-mono text-gray-300">
-                  {activeLook.location}
-                </div>
-
-                {/* Model Stats Badge */}
-                <div className="absolute bottom-4 left-4 glass-panel px-3 py-1 text-[9px] uppercase tracking-[0.22em] font-mono text-gray-300">
-                  MODEL: {activeLook.model}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Information & Look Piece Panel */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="space-y-3">
-                <span className="tag-overline text-[#D4AF37] font-mono">
-                  {activeLook.lookNumber} — EDITORIAL CURATION
-                </span>
-                <h3 className="font-serif text-3xl sm:text-4xl text-white">
-                  {activeLook.title}
-                </h3>
-                <p className="font-serif italic text-base text-gray-400 font-light">
-                  {activeLook.subtitle}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-light pt-2">
-                  {activeLook.description}
-                </p>
-              </div>
-
-              {/* Tagged Featured Product Card in Liquid Glass */}
-              {lookProduct && (
-                <div className="glass-panel-gold p-5 border border-white/15 space-y-4 rounded-xs">
-                  <div className="flex items-center justify-between text-[10px] font-mono tracking-widest text-[#D4AF37]">
-                    <span>RUNWAY FEATURED PIECE</span>
-                    <span>{lookProduct.id.toUpperCase()}</span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-20 bg-[#121522] border border-white/10 overflow-hidden shrink-0">
-                      <img
-                        src={lookProduct.images[0]}
-                        alt={lookProduct.name}
-                        className="w-full h-full object-cover object-top"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <h4 className="font-serif text-lg text-white leading-tight">
-                        {lookProduct.name}
-                      </h4>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-serif text-base text-white">
-                          {formatCurrency(lookProduct.price)}
-                        </span>
-                        {lookProduct.originalPrice && lookProduct.originalPrice > lookProduct.price && (
-                          <span className="text-xs text-gray-500 line-through">
-                            {formatCurrency(lookProduct.originalPrice)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-gray-400 font-mono">
-                        {lookProduct.materials || 'Pure Natural Fibers'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-2 border-t border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => setQuickViewProduct(lookProduct)}
-                      className="flex-1 py-2.5 px-4 gold-gradient-bg text-[#08090D] font-mono text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                    >
-                      <Eye size={13} />
-                      <span>QUICK INSPECT PIECE</span>
-                    </button>
-                    <Link
-                      to={`/product/${lookProduct.id}`}
-                      className="py-2.5 px-4 glass-panel text-white hover:text-[#D4AF37] border-white/20 font-mono text-[10px] uppercase tracking-widest transition-colors"
-                    >
-                      DETAILS
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {/* Hotspot Guide Helper */}
-              <div className="glass-panel p-4 border-white/5 flex items-center gap-3 text-xs text-gray-300">
-                <Compass size={18} className="text-[#D4AF37] shrink-0" />
-                <span className="font-mono text-[10px] tracking-wider text-gray-400">
-                  Tap glowing pins 01 and 02 on the photograph above to inspect structural seams, fabric weights, and drape details.
-                </span>
-              </div>
-            </div>
-          </div>
+        <div className="mt-14 text-center">
+          <Link
+            to="/shop"
+            data-cursor="explore"
+            className="alt-btn-secondary"
+          >
+            <span>EXPLORE FULL ATELIER CATALOGUE</span>
+            <ArrowRight size={14} />
+          </Link>
         </div>
       </section>
 
-      {/* =========================================================================
-          CAMPAIGN MONOGRAPH: Layered Asymmetrical Editorial Section
-          Oversized typography, layered overlapping imagery, custom "EXPLORE" cursor
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8 relative overflow-hidden" aria-label="Campaign Monograph">
-        <div className="max-w-7xl mx-auto">
-          <FadeInView direction="up">
-            <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 sm:mb-16 gap-4">
-              <div>
-                <span className="tag-overline text-[#D4AF37] font-mono">EDITORIAL MONOGRAPH — 04</span>
-                <h2 className="editorial-title text-3xl sm:text-6xl font-serif text-white mt-1">
-                  The Architecture of Form
-                </h2>
-              </div>
-              <p className="text-xs text-gray-400 tracking-widest uppercase font-mono max-w-xs">
-                A DIALOGUE BETWEEN TENSION, BIAS-CUT DRAPE, AND METROPOLITAN SILENCE.
-              </p>
-            </div>
-          </FadeInView>
-
-          {/* Asymmetrical Layered Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left Layered Images (Break-the-grid composition) */}
-            <div className="lg:col-span-7 relative" data-cursor="explore">
-              <FadeInView direction="up" delay={0.15}>
-                {/* Primary Hero Campaign Photo with Tilt */}
-                <TiltCard maxTilt={5} glare={true} className="aspect-[4/5] sm:aspect-[16/11] w-full overflow-hidden border border-white/10 bg-[#0E1018]">
-                  <img
-                    src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1400&q=85"
-                    alt="Aureva Autumn Winter Haute Couture Campaign"
-                    className="w-full h-full object-cover object-center filter grayscale-[15%] contrast-[1.08] hover:scale-105 transition-transform duration-1000 ease-out"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#08090D]/90 via-transparent to-transparent pointer-events-none" />
-                  
-                  {/* Embedded editorial caption */}
-                  <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between text-white pointer-events-none">
-                    <div>
-                      <span className="text-[10px] font-mono tracking-widest text-[#D4AF37] uppercase block">LOOK 04 / PLATE IX</span>
-                      <p className="font-serif text-lg sm:text-xl font-light">Structural Bias Trench in Oxblood Silk-Wool</p>
-                    </div>
-                    <span className="hidden sm:inline font-mono text-[10px] tracking-widest text-gray-400">PALAIS DE TOKYO</span>
-                  </div>
-                </TiltCard>
-              </FadeInView>
-
-              {/* Secondary Overlapping Floating Photo (Layered) */}
-              <FadeInView direction="left" delay={0.3} className="absolute -bottom-8 -right-4 sm:-bottom-12 sm:-right-8 w-44 sm:w-64 z-20 shadow-2xl">
-                <TiltCard maxTilt={8} className="aspect-[3/4] border border-[#D4AF37]/30 bg-[#141724] p-1.5 backdrop-blur-md">
-                  <div className="relative w-full h-full overflow-hidden">
-                    <img
-                      src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=800&q=85"
-                      alt="Campaign Detail Textile Close-up"
-                      className="w-full h-full object-cover object-top hover:scale-110 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#08090D]/80 to-transparent" />
-                    <div className="absolute bottom-3 left-3 right-3 text-white">
-                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-wider block">TEXTILE DETAIL</span>
-                      <p className="text-[11px] font-mono text-gray-300">Biella 720 GSM Weave</p>
-                    </div>
-                  </div>
-                </TiltCard>
-              </FadeInView>
-            </div>
-
-            {/* Right Editorial Copy & Quote Column */}
-            <div className="lg:col-span-5 space-y-8 lg:pl-6 pt-6 lg:pt-0">
-              <FadeInView direction="right" delay={0.2} className="space-y-4">
-                <div className="inline-flex items-center gap-2 glass-panel border-[#D4AF37]/30 text-white text-[10px] tracking-[0.28em] uppercase px-3 py-1 font-mono">
-                  <Sparkles size={12} className="text-[#D4AF37]" />
-                  <span>SEASONAL STATEMENT</span>
-                </div>
-                <blockquote className="font-serif italic text-2xl sm:text-3xl lg:text-4xl text-white font-light leading-snug">
-                  "We treat cloth not merely as a garment, but as space sculpted by momentum."
-                </blockquote>
-                <p className="text-xs sm:text-sm text-gray-300 font-light leading-relaxed">
-                  Rejecting fast-fashion obsolescence, the Autumn / Winter 2026 monograph was developed across eighteen months of tactile trial in Paris and Biella. Each silhouette balances monumental proportion with weightless kinetic drape.
-                </p>
-              </FadeInView>
-
-              <FadeInView direction="right" delay={0.3} className="space-y-6 pt-4 border-t border-white/10">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-panel p-4 border-white/10">
-                    <span className="font-mono text-[10px] text-[#D4AF37] uppercase tracking-wider block">EDITION RUN</span>
-                    <span className="font-serif text-xl sm:text-2xl text-white block mt-1">120 Pieces</span>
-                    <span className="text-[10px] text-gray-400 font-mono">Numbered salon certificates</span>
-                  </div>
-                  <div className="glass-panel p-4 border-white/10">
-                    <span className="font-mono text-[10px] text-[#D4AF37] uppercase tracking-wider block">ORIGIN CERTIFIED</span>
-                    <span className="font-serif text-xl sm:text-2xl text-white block mt-1">100% Traceable</span>
-                    <span className="text-[10px] text-gray-400 font-mono">Piedmont & Lyon Mills</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 pt-2">
-                  <Button variant="primary" size="md" to="/shop" magnetic={true}>
-                    VIEW MONOGRAPH COLLECTION
-                  </Button>
-                  <Link
-                    to="/about"
-                    className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-gray-300 hover:text-[#D4AF37] transition-colors"
-                  >
-                    <span>READ ATELIER ESSAY</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-              </FadeInView>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 2: Shop by Category: Women, Men and Accessories
-          Liquid glass cards with subtle gold glow on hover
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="Shop by Category">
-        <div className="max-w-7xl mx-auto">
-          {/* Section Header */}
-          <FadeInView direction="up">
-            <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 gap-4">
-              <div>
-                <span className="tag-overline text-[#D4AF37] font-mono">CURATED DEPARTMENTS</span>
-                <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-                  Shop By Category
-                </h2>
-              </div>
-              <p className="text-xs text-gray-400 tracking-wider uppercase font-mono">
-                THREE DISCIPLINARY STUDIES IN READY-TO-WEAR
-              </p>
-            </div>
-          </FadeInView>
-
-          {/* 3 Structured Category Cards in Liquid Glass */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {/* Category 1: Women */}
-            <Link
-              to="/shop?category=Women"
-              className="group relative flex flex-col bg-[#10131E] border border-white/10 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] hover:border-[#D4AF37]/50 transition-all duration-300"
-            >
-              <div className="aspect-[4/5] overflow-hidden relative">
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=85"
-                  alt="AUREVA Women Ready-to-Wear Category"
-                  className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08090D] via-[#08090D]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
-
-                <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono block">
-                    DEPARTMENT 01
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-3xl sm:text-4xl tracking-wide">Women</h3>
-                    <div className="h-8 w-8 rounded-full glass-panel-gold flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <ArrowRight size={16} className="text-[#D4AF37]" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-300 font-light font-serif italic">
-                    Cocoon coats, architectural column gowns, and bias tailoring.
-                  </p>
-                </div>
-              </div>
-            </Link>
-
-            {/* Category 2: Men */}
-            <Link
-              to="/shop?category=Men"
-              className="group relative flex flex-col bg-[#10131E] border border-white/10 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] hover:border-[#D4AF37]/50 transition-all duration-300"
-            >
-              <div className="aspect-[4/5] overflow-hidden relative">
-                <img
-                  src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=85"
-                  alt="AUREVA Men Ready-to-Wear Category"
-                  className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08090D] via-[#08090D]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
-
-                <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono block">
-                    DEPARTMENT 02
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-3xl sm:text-4xl tracking-wide">Men</h3>
-                    <div className="h-8 w-8 rounded-full glass-panel-gold flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <ArrowRight size={16} className="text-[#D4AF37]" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-300 font-light font-serif italic">
-                    Single-breasted wool coats, heavy poplin tunics, and wide trousers.
-                  </p>
-                </div>
-              </div>
-            </Link>
-
-            {/* Category 3: Accessories */}
-            <Link
-              to="/shop?category=Accessories"
-              className="group relative flex flex-col bg-[#10131E] border border-white/10 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] hover:border-[#D4AF37]/50 transition-all duration-300"
-            >
-              <div className="aspect-[4/5] overflow-hidden relative">
-                <img
-                  src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1200&q=85"
-                  alt="AUREVA Leather Objects and Accessories Category"
-                  className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08090D] via-[#08090D]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
-
-                <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono block">
-                    DEPARTMENT 03
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-3xl sm:text-4xl tracking-wide">Objects</h3>
-                    <div className="h-8 w-8 rounded-full glass-panel-gold flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <ArrowRight size={16} className="text-[#D4AF37]" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-300 font-light font-serif italic">
-                    Tuscan bridle leather totes, raw brass hardware, and silk scarves.
-                  </p>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 3: Featured New Arrivals Grid
-          Liquid glass product cards with quick inspect modal
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="New Arrivals">
-        <div className="max-w-7xl mx-auto">
-          {/* Section Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 gap-4">
-            <div>
-              <span className="tag-overline text-[#D4AF37] font-mono">AUTUMN / WINTER ALLOCATIONS</span>
-              <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-                New Arrivals
-              </h2>
-            </div>
-            <Link
-              to="/shop?filter=new"
-              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-[#D4AF37] hover:text-white border-b border-[#D4AF37]/50 pb-0.5 transition-colors font-mono"
-            >
-              <span>View All Allocations</span>
-              <ArrowUpRight size={14} />
-            </Link>
-          </div>
-
-          {/* Product Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {newArrivals.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onQuickView={(p) => setQuickViewProduct(p)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 4: Atelier Materiality & Craft Matrix
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="Haute Couture Craftsmanship">
-        <div className="max-w-7xl mx-auto border-t border-white/10 pt-16">
-          <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
-            <span className="tag-overline text-[#D4AF37] font-mono">NOBLE TEXTILES</span>
-            <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white">
-              The Architecture of Materials
+      {/* ========================================================
+          SECTION 7 — EDITORIAL STORYTELLING
+          Atelier craftsmanship, noble textiles, verified facts
+      ======================================================== */}
+      <section className="py-20 md:py-28 px-4 sm:px-8 md:px-12 lg:px-20 border-b border-[#292929] bg-[#111111]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          <div className="lg:col-span-6 space-y-6">
+            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#B8FF00] block">
+              THE ATELIER ETHOS
+            </span>
+            <h2 className="font-display font-extrabold text-3xl sm:text-5xl uppercase tracking-tight text-[#F5F5F5] leading-[1.02]">
+              CRAFTED FOR PERMANENT DEFIANCE.
             </h2>
-            <p className="text-xs text-gray-400 font-mono tracking-wider">
-              ZERO SYNTHETIC FILLERS • UNCOMPROMISING NATURAL INTEGRITY
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-panel p-6 sm:p-8 space-y-4 rounded-xs border-white/10 hover:border-[#D4AF37]/40 transition-colors">
-              <span className="font-mono text-xs text-[#D4AF37] font-bold">01 / BIELLA WOOL</span>
-              <h3 className="font-serif text-2xl text-white">720 GSM Double-Faced Merino</h3>
-              <p className="text-xs text-gray-300 leading-relaxed font-light">
-                Sourced from generational mills in Piedmont, Italy. Dense, structural, and unlined, retaining crisp architectural form without stiffening adhesives.
+            <div className="space-y-4 text-sm md:text-base text-[#A6A6A6] font-light leading-relaxed">
+              <p>
+                AUREVA was conceived as a weapon against disposable micro-trends. We craft garments with anatomical precision, weighted virgin wools, raw hardware, and dark subcultural authority.
+              </p>
+              <p>
+                Every pattern is drafted in our Paris atelier and executed in partnership with master weavers in Biella and Lyon, producing garments that improve with age, wear, and kinetic stride.
               </p>
             </div>
 
-            <div className="glass-panel p-6 sm:p-8 space-y-4 rounded-xs border-white/10 hover:border-[#D4AF37]/40 transition-colors">
-              <span className="font-mono text-xs text-[#D4AF37] font-bold">02 / LYON SILK</span>
-              <h3 className="font-serif text-2xl text-white">Pure Mulberry Velvet</h3>
-              <p className="text-xs text-gray-300 leading-relaxed font-light">
-                Woven on traditional jacquard looms in France. Provides extraordinary depth of tone and fluid kinetic drape under evening lighting.
-              </p>
-            </div>
-
-            <div className="glass-panel p-6 sm:p-8 space-y-4 rounded-xs border-white/10 hover:border-[#D4AF37]/40 transition-colors">
-              <span className="font-mono text-xs text-[#D4AF37] font-bold">03 / TUSCAN BRIDLE</span>
-              <h3 className="font-serif text-2xl text-white">Vegetable-Tanned Cowhide</h3>
-              <p className="text-xs text-gray-300 leading-relaxed font-light">
-                Steeped in chestnut and mimosa tannins for over 40 days. Develops a lustrous, individualized patina that deepens through every voyage.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 5: Best Sellers / Permanent Wardrobe Edit
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="Curated Best Sellers">
-        <div className="max-w-7xl mx-auto border-t border-white/10 pt-16">
-          {/* Section Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/10 pb-6 mb-12 gap-4">
-            <div>
-              <span className="tag-overline text-[#D4AF37] font-mono">PERMANENT ARCHIVE</span>
-              <h2 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-                The Icons Edit
-              </h2>
-            </div>
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-[#D4AF37] hover:text-white border-b border-[#D4AF37]/50 pb-0.5 transition-colors font-mono"
-            >
-              <span>Explore All Silhouettes</span>
-              <ArrowUpRight size={14} />
-            </Link>
-          </div>
-
-          {/* Product Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {bestSellers.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onQuickView={(p) => setQuickViewProduct(p)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION 6: VIP Launch Offer Card in Frosted Liquid Glass
-          Interactive copyable privilege code AUREVA15
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="Inaugural Launch Privilege">
-        <div className="max-w-7xl mx-auto glass-panel-gold p-8 sm:p-12 relative overflow-hidden rounded-xs border border-white/15 shadow-2xl">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.25em] uppercase text-[#D4AF37] font-mono font-semibold">
-                <Sparkles size={12} />
-                <span>INAUGURAL SALON PRIVILEGE</span>
+            <div className="pt-4 grid grid-cols-2 gap-4 border-t border-[#292929]">
+              <div>
+                <span className="font-condensed font-bold text-xl uppercase text-[#F5F5F5] block">BIELLA VIRGIN WOOL</span>
+                <span className="text-[11px] font-mono tracking-wider uppercase text-[#737373]">Dense Double-Faced Weave</span>
               </div>
-              <h3 className="font-serif text-2xl sm:text-3xl text-white">
-                Enjoy 15% Courtesy on Your Inaugural Order
-              </h3>
-              <p className="text-xs text-gray-300 leading-relaxed font-sans">
-                In celebration of our international salon launch, apply privilege code at checkout. Valid across all Permanent and Monograph collections. Complimentary express worldwide courier included.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0">
-              {/* Copy Code Interactive Box */}
-              <div className="flex items-center glass-panel border-[#D4AF37]/40 px-4 py-3 justify-between gap-4">
-                <span className="font-mono text-sm tracking-widest font-bold text-[#D4AF37]">
-                  AUREVA15
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold text-white hover:text-[#D4AF37] transition-colors cursor-pointer"
-                  aria-label="Copy launch privilege promo code"
-                >
-                  {copiedCode ? (
-                    <>
-                      <Check size={13} className="text-emerald-400" />
-                      <span className="text-emerald-400 font-mono">COPIED</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={13} />
-                      <span className="font-mono">COPY CODE</span>
-                    </>
-                  )}
-                </button>
+              <div>
+                <span className="font-condensed font-bold text-xl uppercase text-[#F5F5F5] block">TUSCAN SADDLE LEATHER</span>
+                <span className="text-[11px] font-mono tracking-wider uppercase text-[#737373]">Vegetable-Tanned Finish</span>
               </div>
-
-              {/* Action Button */}
-              <Button variant="primary" size="md" to="/shop">
-                SHOP WITH PRIVILEGE
-              </Button>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* =========================================================================
-          SECTION 7: Newsletter Signup in Liquid Glass
-          ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8" aria-label="Atelier Dispatch Newsletter">
-        <div className="max-w-4xl mx-auto glass-panel p-8 sm:p-14 space-y-8 text-center rounded-xs border-white/10">
-          <div className="space-y-3 max-w-xl mx-auto">
-            <span className="tag-overline text-[#D4AF37] font-mono">PRIVATE SALON ACCESS</span>
-            <h2 className="editorial-title text-3xl sm:text-4xl font-serif text-white">
-              Join The Atelier Dispatch
-            </h2>
-            <p className="text-xs text-gray-400 leading-relaxed font-light">
-              Subscribers receive advance invitations to private monograph presentations, limited edition allocations, and editorial monographs before public release.
-            </p>
+          <div className="lg:col-span-6 relative aspect-[4/5] overflow-hidden bg-[#171717] border border-[#292929]">
+            <img
+              src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=1600&q=88"
+              alt="Atelier Draping & Tailoring"
+              className="w-full h-full object-cover object-top filter contrast-110 brightness-95"
+            />
           </div>
-
-          <NewsletterForm variant="dark" className="max-w-md mx-auto" />
         </div>
       </section>
 
-      {/* Persistent Quick View Modal */}
-      <ProductQuickViewModal
-        product={quickViewProduct}
-        isOpen={Boolean(quickViewProduct)}
-        onClose={() => setQuickViewProduct(null)}
-      />
-    </PageTransition>
+      {/* ========================================================
+          SECTION 8 — MINIMAL PREMIUM NEWSLETTER
+          Connected to backend API (/api/newsletter/subscribe)
+      ======================================================== */}
+      <section className="py-20 md:py-28 px-4 sm:px-8 md:px-12 lg:px-20 border-b border-[#292929] bg-[#090909]">
+        <div className="max-w-3xl mx-auto text-center space-y-5">
+          <span className="text-[10px] font-mono tracking-[0.35em] uppercase text-[#B8FF00] block">
+            SALON PRIVÉ // JOIN THE COVEN
+          </span>
+          <h2 className="font-display font-extrabold text-3xl sm:text-5xl uppercase tracking-tight text-[#F5F5F5]">
+            ENTER THE WORLD OF AUREVA.
+          </h2>
+          <p className="text-sm md:text-base text-[#A6A6A6] font-light leading-relaxed max-w-lg mx-auto">
+            Receive private exhibition invitations, secret monograph releases, and 15% courtesy applied on your inaugural piece with code <strong className="font-mono text-[#B8FF00]">AUREVA15</strong>.
+          </p>
+
+          <div className="pt-4 max-w-lg mx-auto">
+            <NewsletterForm variant="dark" />
+          </div>
+        </div>
+      </section>
+
+      {/* Modal for quick viewing any piece */}
+      {quickViewProduct && (
+        <ProductQuickViewModal
+          product={quickViewProduct}
+          isOpen={Boolean(quickViewProduct)}
+          onClose={() => setQuickViewProduct(null)}
+        />
+      )}
+    </div>
   )
 }

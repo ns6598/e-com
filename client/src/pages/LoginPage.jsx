@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Lock, Mail, ArrowRight, ShieldCheck, UserCheck, AlertCircle, Sparkles } from 'lucide-react'
+import { Lock, Mail, ArrowRight, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function LoginPage() {
@@ -23,7 +22,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     if (!formData.email.trim() || !formData.password) {
-      setError('Please provide both your registered salon email and password.')
+      setError('Please provide both your registered email and password.')
       return
     }
 
@@ -54,65 +53,66 @@ export default function LoginPage() {
   }
 
   return (
-    <PageTransition className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-white">
+    <PageTransition className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-[#F5F5F5]">
       <div className="w-full max-w-md space-y-8">
-        {/* Editorial Heading */}
+        {/* Heading */}
         <div className="text-center space-y-2">
-          <span className="tag-overline text-[#D4AF37] font-mono">ATELIER PRIVÉ</span>
-          <h1 className="editorial-title text-3xl sm:text-4xl font-serif text-white tracking-tight">
-            Patron Sign In
+          <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-[#B8FF00] block">
+            AUREVA PATRON ACCESS
+          </span>
+          <h1 className="font-['Syne'] text-3xl sm:text-4xl uppercase font-bold tracking-wider text-[#F5F5F5]">
+            SIGN IN
           </h1>
-          <p className="text-xs text-gray-400 font-mono tracking-wider max-w-xs mx-auto">
-            Access your curated salon acquisitions, saved bespoke silhouettes, and order dispatch records.
+          <p className="text-xs text-[#A6A6A6] font-mono tracking-wider max-w-xs mx-auto">
+            Access your order tracking, saved wishlist items, and member exclusives.
           </p>
         </div>
 
         {/* Demo Account Quick-Fill Card */}
-        <div className="glass-panel p-4 rounded-xs border-white/10 space-y-3 bg-[#111420]/80">
-          <div className="flex items-center justify-between text-[11px] font-mono text-gray-300">
-            <span className="flex items-center gap-1.5 text-[#D4AF37]">
-              <Sparkles size={12} />
+        <div className="p-4 bg-[#171717] border border-[#292929] space-y-3">
+          <div className="flex items-center justify-between text-[11px] font-mono text-[#A6A6A6]">
+            <span className="flex items-center gap-1.5 text-[#B8FF00] font-bold">
               <span>TEST CREDENTIALS</span>
             </span>
-            <span className="text-[10px] text-gray-500 uppercase">One-Click Fill</span>
+            <span className="text-[10px] text-[#A6A6A6] uppercase">1-CLICK POPULATE</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => handleQuickFill('patron')}
-              className="px-3 py-2 text-[10px] uppercase tracking-wider font-mono border border-white/15 bg-white/5 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all cursor-pointer text-left flex flex-col justify-center"
+              className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-mono border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-all cursor-pointer text-left flex flex-col justify-center"
             >
-              <span className="font-semibold text-white">Patron (Client)</span>
-              <span className="text-gray-400 text-[9px] truncate">patron@aureva-studios.demo</span>
+              <span className="font-bold text-[#F5F5F5]">Customer / Patron</span>
+              <span className="text-[#A6A6A6] text-[9px] truncate">patron@aureva-studios.demo</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('admin')}
-              className="px-3 py-2 text-[10px] uppercase tracking-wider font-mono border border-white/15 bg-white/5 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all cursor-pointer text-left flex flex-col justify-center"
+              className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-mono border border-[#292929] bg-[#111111] hover:border-[#B8FF00] hover:text-[#B8FF00] transition-all cursor-pointer text-left flex flex-col justify-center"
             >
-              <span className="font-semibold text-[#D4AF37]">Curator (Admin)</span>
-              <span className="text-gray-400 text-[9px] truncate">curator@aureva-studios.demo</span>
+              <span className="font-bold text-[#B8FF00]">Admin / Curator</span>
+              <span className="text-[#A6A6A6] text-[9px] truncate">curator@aureva-studios.demo</span>
             </button>
           </div>
         </div>
 
         {/* Login Form Card */}
-        <div className="glass-panel p-6 sm:p-8 rounded-xs border-white/10 space-y-6 bg-[#0E1018]/90 shadow-2xl">
+        <div className="p-6 sm:p-8 bg-[#111111] border border-[#292929] space-y-6 shadow-2xl">
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3.5 border border-[#6D202D] bg-[#6D202D]/20 text-red-200 text-xs flex items-center gap-2.5 rounded-xs"
+              className="p-3.5 border border-[#8B0000] bg-[#171717] text-[#F5F5F5] text-xs flex items-center gap-2.5"
             >
-              <AlertCircle size={15} className="shrink-0 text-red-400" />
-              <span>{error}</span>
+              <AlertCircle size={15} className="shrink-0 text-[#8B0000]" />
+              <span className="font-mono text-xs">{error}</span>
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                Salon Email
+              <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                EMAIL ADDRESS
               </label>
               <div className="relative">
                 <input
@@ -121,19 +121,19 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="patron@aureva-studios.demo"
                   required
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <Mail size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Mail size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                  Password
+                <label className="block text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                  PASSWORD
                 </label>
-                <span className="text-[10px] text-gray-500 font-mono cursor-not-allowed">
-                  Encrypted SHA-256
+                <span className="text-[10px] uppercase tracking-wider font-mono text-[#A6A6A6]">
+                  MIN 8 CHARS
                 </span>
               </div>
               <div className="relative">
@@ -143,34 +143,45 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••••••"
                   required
-                  className="w-full bg-[#141724] border border-white/15 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="w-full bg-[#171717] border border-[#292929] pl-10 pr-4 py-3 text-xs text-[#F5F5F5] placeholder:text-[#A6A6A6]/50 focus:outline-none focus:border-[#B8FF00] transition-colors font-mono"
                 />
-                <Lock size={15} className="text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Lock size={15} className="text-[#A6A6A6] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Authenticating...' : 'Sign In to Atelier'}
-            </Button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-[#B8FF00] hover:bg-[#cbfb27] text-[#090909] font-['Oswald'] text-sm uppercase tracking-[0.2em] font-bold transition-all shadow-[0_0_15px_rgba(184,255,0,0.2)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-[#090909] border-t-transparent rounded-full animate-spin" />
+                    <span>AUTHENTICATING...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>SIGN IN</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+            </div>
           </form>
 
-          <div className="border-t border-white/10 pt-4 text-center">
-            <p className="text-xs text-gray-400 font-mono">
-              Do not hold an active account?{' '}
-              <Link
-                to="/register"
-                state={{ from: redirectPath }}
-                className="text-[#D4AF37] hover:underline font-semibold"
-              >
-                Register as Patron
+          {/* Footer Navigation */}
+          <div className="border-t border-[#292929] pt-4 text-center space-y-3">
+            <p className="text-xs text-[#A6A6A6] font-mono">
+              Do not possess an AUREVA account?{' '}
+              <Link to="/register" className="text-[#B8FF00] hover:underline font-bold">
+                Create Account
               </Link>
             </p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#A6A6A6] font-mono">
+              <ShieldCheck size={12} className="text-[#B8FF00]" />
+              <span>HTTP-ONLY SECURE COOKIE AUTHENTICATION</span>
+            </div>
           </div>
         </div>
       </div>

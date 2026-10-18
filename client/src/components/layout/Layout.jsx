@@ -10,7 +10,7 @@ import CartFlyToast from '../motion/CartFlyToast'
 
 export default function Layout() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#08090D] text-[#F3F4F6] relative overflow-x-hidden selection:bg-[#D4AF37] selection:text-[#08090D]">
+    <div className="min-h-screen flex flex-col bg-[#090909] text-[#F5F5F5] relative overflow-x-hidden selection:bg-[#B8FF00] selection:text-[#090909]">
       <ScrollToTop />
 
       {/* Global Scroll Reading Progress Bar */}
@@ -19,20 +19,19 @@ export default function Layout() {
       {/* Interactive Cursor Following Spotlight & Context Badge */}
       <CustomCursorSpotlight />
 
-      {/* Atmospheric Ambient Lighting Gradients */}
-      <div className="ambient-glow-gold top-0 left-1/4 w-[600px] h-[600px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-      <div className="ambient-glow-crimson top-[800px] right-0 w-[700px] h-[700px] pointer-events-none" />
-      <div className="ambient-glow-gold bottom-[1200px] left-0 w-[500px] h-[500px] pointer-events-none" />
+      {/* Dark Alternative Atmospheric Ambient Lighting Gradients */}
+      <div className="ambient-glow-crimson top-[300px] -right-[150px] w-[500px] h-[500px] pointer-events-none" />
+      <div className="ambient-glow-dark bottom-[900px] -left-[150px] w-[450px] h-[450px] pointer-events-none" />
 
       {/* Skip to Content Link for Accessibility */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-[#D4AF37] text-[#08090D] px-5 py-2.5 text-xs font-semibold tracking-widest uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 bg-[#B8FF00] text-[#090909] px-5 py-2.5 text-xs font-bold tracking-widest uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white font-mono"
       >
         Skip to main content
       </a>
 
-      {/* Persistent Liquid Glass Navigation Header */}
+      {/* Persistent Dark Alternative Navigation Header */}
       <Header />
 
       {/* Main Dynamic View Outlet */}
@@ -46,7 +45,7 @@ export default function Layout() {
       {/* Cart Flyout / Drawer */}
       <CartDrawer />
 
-      {/* Persistent Neo-Luxury Footer */}
+      {/* Persistent Dark Fashion Footer */}
       <Footer />
     </div>
   )

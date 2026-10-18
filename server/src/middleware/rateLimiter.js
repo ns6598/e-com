@@ -77,12 +77,27 @@ export const loginLimiter = rateLimiter({
 })
 
 /**
- * General API rate limiter (120 requests per minute)
+ * General API rate limiter (180 requests per minute)
  */
 export const apiLimiter = rateLimiter({
   windowMs: 60 * 1000,
   max: 180,
   message: 'Atelier API rate quota exceeded. Please slow down your requests.',
+})
+
+/**
+ * Order placement rate limiter
+ * Protects against checkout spam and brute-force coupon/inventory depletion
+ */
+export const orderLimiter = rateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 orders
+  message: 'Acquisition finalization limit reached. Please wait a few moments before placing another order.',
+  keyGenerator: (req) => {
+    const userId = req.user?.id || 'guest'
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'client-ip'
+    return `order:${userId}:${ip}`
+  },
 })
 
 export default rateLimiter

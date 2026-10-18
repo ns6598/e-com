@@ -37,17 +37,24 @@ export function errorHandler(err, req, res, next) {
 
   // 3. Custom Application / HTTP Error
   const statusCode = err.statusCode || err.status || 500
-  const message = err.message || 'An internal server error occurred'
+  const isProduction = config.nodeEnv === 'production'
+  
+  // In production, prevent leaking internal database errors, connection strings, or system paths
+  const message =
+    isProduction && statusCode >= 500
+      ? 'An unexpected atelier server error occurred. Please try again or contact concierge support.'
+      : (err.message || 'An internal server error occurred')
+
   const code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_ERROR')
 
-  if (config.nodeEnv === 'development') {
+  if (!isProduction) {
     console.error(`[Error ${statusCode}] ${req.method} ${req.originalUrl}:`, err)
   }
 
   return errorResponse(res, {
     message,
     code,
-    details: config.nodeEnv === 'development' ? err.stack : null,
+    details: !isProduction ? err.stack : null,
     statusCode,
   })
 }

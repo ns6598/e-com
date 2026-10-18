@@ -5,26 +5,31 @@ import {
   User,
   Package,
   MapPin,
+  Heart,
+  Settings,
   LogOut,
-  ShieldAlert,
   ShieldCheck,
   ChevronRight,
   ExternalLink,
   Clock,
-  Sparkles,
   CheckCircle,
   Truck,
   RotateCcw,
   Sliders,
+  ShoppingBag,
+  Trash2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useWishlist } from '../context/WishlistContext'
+import { useCart } from '../context/CartContext'
 import orderService from '../services/orderService'
 import { formatCurrency } from '../utils/formatters'
-import Button from '../components/ui/Button'
 import PageTransition from '../components/motion/PageTransition'
 
 export default function AccountPage() {
   const { user, loading, logout, updateProfile, isAdmin } = useAuth()
+  const { wishlist, removeFromWishlist } = useWishlist()
+  const { addToCart } = useCart()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState('orders')
@@ -42,7 +47,6 @@ export default function AccountPage() {
     postalCode: user?.postalCode || '',
   })
 
-  // Synchronize form when user loads
   useEffect(() => {
     if (user) {
       setProfileForm({
@@ -56,7 +60,7 @@ export default function AccountPage() {
     }
   }, [user])
 
-  // Fetch orders from real Express REST API
+  // Fetch orders
   useEffect(() => {
     let isMounted = true
 
@@ -91,7 +95,7 @@ export default function AccountPage() {
     setProfileSaving(false)
 
     if (res.success) {
-      setFeedback({ type: 'success', text: 'Patron preferences successfully archived.' })
+      setFeedback({ type: 'success', text: 'Account details successfully saved.' })
       setTimeout(() => setFeedback({ type: null, text: '' }), 4000)
     } else {
       setFeedback({ type: 'error', text: res.message || 'Could not update profile.' })
@@ -106,60 +110,70 @@ export default function AccountPage() {
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case 'DELIVERED':
-        return 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+        return 'border-[#B8FF00] text-[#B8FF00] bg-[#B8FF00]/10'
       case 'DISPATCHED':
-        return 'border-sky-500/40 text-sky-300 bg-sky-500/10'
+        return 'border-sky-400 text-sky-400 bg-sky-400/10'
       case 'PROCESSING':
-        return 'border-[#D4AF37]/50 text-[#D4AF37] bg-[#D4AF37]/10'
+        return 'border-[#A6A6A6] text-[#F5F5F5] bg-[#292929]'
       case 'CANCELLED':
-        return 'border-red-500/40 text-red-300 bg-red-500/10'
+        return 'border-[#8B0000] text-[#8B0000] bg-[#8B0000]/10'
+      default:
+        return 'border-[#292929] text-[#A6A6A6] bg-[#111111]'
     }
   }
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-28 text-center text-white space-y-4">
-        <div className="h-8 w-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="font-mono text-xs uppercase tracking-widest text-gray-400">Verifying Patron Salon Session...</p>
+      <div className="max-w-4xl mx-auto px-4 py-28 text-center text-[#F5F5F5] space-y-4">
+        <div className="h-8 w-8 border-2 border-[#B8FF00] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="font-mono text-xs uppercase tracking-widest text-[#A6A6A6]">AUTHENTICATING PATRON SESSION...</p>
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="max-w-md mx-auto px-4 py-28 text-center text-white space-y-6">
-        <ShieldAlert size={44} className="text-[#D4AF37] mx-auto" />
-        <h1 className="editorial-title text-3xl font-serif">Patron Dossier Protected</h1>
-        <p className="text-xs text-gray-400 font-mono leading-relaxed">
-          This dossier archives your private acquisitions and bespoke tailoring records. Please sign into your salon account to proceed.
+      <div className="max-w-md mx-auto px-4 py-28 text-center text-[#F5F5F5] space-y-6">
+        <div className="p-4 rounded-full bg-[#171717] border border-[#292929] inline-flex">
+          <User size={40} className="text-[#B8FF00]" />
+        </div>
+        <h1 className="font-['Syne'] text-3xl font-bold uppercase">PATRON LOGIN REQUIRED</h1>
+        <p className="text-xs text-[#A6A6A6] font-mono leading-relaxed">
+          Sign in to view your orders, saved darkwear wishlist, and delivery addresses.
         </p>
         <div className="pt-2">
-          <Button variant="primary" size="lg" to="/login" state={{ from: '/account' }}>
-            Sign In to Salon Account
-          </Button>
+          <Link
+            to="/login"
+            state={{ from: '/account' }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#B8FF00] text-[#090909] font-['Oswald'] text-xs uppercase tracking-widest font-bold"
+          >
+            SIGN IN TO ACCOUNT
+          </Link>
         </div>
       </div>
     )
   }
 
   return (
-    <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-10 text-white">
-      {/* Editorial Header */}
-      <div className="border-b border-white/10 pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <PageTransition className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-10 text-[#F5F5F5]">
+      {/* Header */}
+      <div className="border-b border-[#292929] pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <span className="tag-overline text-[#D4AF37] font-mono">SALON DOSSIER</span>
+            <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-[#B8FF00] block">
+              AUREVA PATRON DOSSIER
+            </span>
             {isAdmin && (
-              <span className="px-2.5 py-0.5 text-[9px] uppercase font-mono tracking-widest gold-gradient-bg text-[#08090D] font-bold">
-                Curator Admin
+              <span className="px-2 py-0.5 text-[9px] uppercase font-mono tracking-widest bg-[#B8FF00] text-[#090909] font-bold">
+                ADMIN ACCESS
               </span>
             )}
           </div>
-          <h1 className="editorial-title text-3xl sm:text-5xl font-serif text-white mt-1">
-            {user?.name || 'Patron Account'}
+          <h1 className="font-['Syne'] text-3xl sm:text-5xl font-extrabold uppercase text-[#F5F5F5] mt-1">
+            {user?.name || 'PATRON ACCOUNT'}
           </h1>
-          <p className="text-xs text-gray-400 font-mono tracking-wider mt-1">
-            {user?.email} • Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2026'}
+          <p className="text-xs text-[#A6A6A6] font-mono tracking-wider mt-1">
+            {user?.email} • MEMBER SINCE {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2026'}
           </p>
         </div>
 
@@ -167,20 +181,20 @@ export default function AccountPage() {
           {isAdmin && (
             <Link
               to="/admin"
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-mono font-semibold gold-gradient-bg text-[#08090D] hover:opacity-90 transition-opacity shadow-md cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-['Oswald'] font-bold bg-[#B8FF00] text-[#090909] hover:bg-[#cbfb27] transition-all cursor-pointer"
             >
               <Sliders size={14} />
-              <span>Admin Management</span>
+              <span>ADMIN DASHBOARD</span>
             </Link>
           )}
 
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-mono border border-white/20 hover:border-red-500/60 hover:text-red-300 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider font-mono border border-[#292929] bg-[#171717] hover:border-[#8B0000] hover:text-[#8B0000] transition-colors cursor-pointer"
           >
             <LogOut size={14} />
-            <span>Sign Out</span>
+            <span>SIGN OUT</span>
           </button>
         </div>
       </div>
@@ -192,31 +206,79 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-mono border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border transition-all cursor-pointer flex items-center justify-between ${
               activeTab === 'orders'
-                ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                : 'border-white/10 text-gray-300 hover:border-white/30 bg-white/5'
+                ? 'bg-[#B8FF00] text-[#090909] font-bold border-[#B8FF00]'
+                : 'border-[#292929] text-[#A6A6A6] hover:text-[#F5F5F5] bg-[#111111]'
             }`}
           >
             <span className="flex items-center gap-2.5">
               <Package size={15} />
-              <span>Order Archives</span>
+              <span>ORDERS</span>
             </span>
-            <span className="text-[10px] opacity-80">({orders.length})</span>
+            <span className="font-mono text-[10px]">({orders.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-mono border transition-all cursor-pointer flex items-center justify-between ${
+            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border transition-all cursor-pointer flex items-center justify-between ${
               activeTab === 'profile'
-                ? 'gold-gradient-bg text-[#08090D] font-bold border-[#D4AF37]'
-                : 'border-white/10 text-gray-300 hover:border-white/30 bg-white/5'
+                ? 'bg-[#B8FF00] text-[#090909] font-bold border-[#B8FF00]'
+                : 'border-[#292929] text-[#A6A6A6] hover:text-[#F5F5F5] bg-[#111111]'
             }`}
           >
             <span className="flex items-center gap-2.5">
               <User size={15} />
-              <span>Patron Preferences</span>
+              <span>PROFILE</span>
+            </span>
+            <ChevronRight size={14} className="opacity-60" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('addresses')}
+            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border transition-all cursor-pointer flex items-center justify-between ${
+              activeTab === 'addresses'
+                ? 'bg-[#B8FF00] text-[#090909] font-bold border-[#B8FF00]'
+                : 'border-[#292929] text-[#A6A6A6] hover:text-[#F5F5F5] bg-[#111111]'
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <MapPin size={15} />
+              <span>ADDRESSES</span>
+            </span>
+            <ChevronRight size={14} className="opacity-60" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('wishlist')}
+            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border transition-all cursor-pointer flex items-center justify-between ${
+              activeTab === 'wishlist'
+                ? 'bg-[#B8FF00] text-[#090909] font-bold border-[#B8FF00]'
+                : 'border-[#292929] text-[#A6A6A6] hover:text-[#F5F5F5] bg-[#111111]'
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Heart size={15} />
+              <span>WISHLIST</span>
+            </span>
+            <span className="font-mono text-[10px]">({wishlist.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            className={`w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border transition-all cursor-pointer flex items-center justify-between ${
+              activeTab === 'settings'
+                ? 'bg-[#B8FF00] text-[#090909] font-bold border-[#B8FF00]'
+                : 'border-[#292929] text-[#A6A6A6] hover:text-[#F5F5F5] bg-[#111111]'
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Settings size={15} />
+              <span>SETTINGS</span>
             </span>
             <ChevronRight size={14} className="opacity-60" />
           </button>
@@ -224,11 +286,11 @@ export default function AccountPage() {
           {isAdmin && (
             <Link
               to="/admin"
-              className="w-full text-left p-3.5 text-xs uppercase tracking-wider font-mono border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/20 transition-all flex items-center justify-between mt-4"
+              className="w-full text-left p-3.5 text-xs uppercase tracking-wider font-['Oswald'] border border-[#B8FF00]/40 bg-[#171717] text-[#B8FF00] hover:bg-[#202020] transition-all flex items-center justify-between mt-4"
             >
               <span className="flex items-center gap-2.5">
-                <ShieldCheck size={15} />
-                <span>Atelier Curator Console</span>
+                <Sliders size={15} />
+                <span>ADMIN CONSOLE</span>
               </span>
               <ExternalLink size={13} />
             </Link>
@@ -240,104 +302,103 @@ export default function AccountPage() {
           {/* TAB 1: ORDERS */}
           {activeTab === 'orders' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h2 className="font-serif text-2xl text-white">Acquisition History</h2>
-                <span className="text-xs font-mono text-gray-400">
-                  {orders.length} Monograph {orders.length === 1 ? 'Dispatch' : 'Dispatches'}
+              <div className="flex items-center justify-between border-b border-[#292929] pb-3">
+                <h2 className="font-['Oswald'] uppercase text-xl font-bold tracking-wider text-[#F5F5F5]">
+                  ORDER HISTORY
+                </h2>
+                <span className="text-xs font-mono text-[#A6A6A6]">
+                  {orders.length} {orders.length === 1 ? 'ORDER' : 'ORDERS'}
                 </span>
               </div>
 
               {loadingOrders ? (
-                <div className="p-12 text-center text-xs font-mono text-gray-400">
-                  Querying atelier archives...
+                <div className="py-16 text-center text-[#A6A6A6] font-mono text-xs">
+                  <div className="h-6 w-6 border-2 border-[#B8FF00] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <span>RETRIEVING ORDER DISPATCHES...</span>
                 </div>
               ) : orders.length === 0 ? (
-                <div className="glass-panel p-10 text-center space-y-4 border-white/10 bg-[#0E1018]/80">
-                  <Package size={36} className="mx-auto text-gray-600 stroke-[1.2]" />
-                  <p className="font-serif text-xl text-gray-300">No archival orders on record</p>
-                  <p className="text-xs font-mono text-gray-500 max-w-sm mx-auto">
-                    Your salon history will preserve all confirmed acquisitions and dispatch statuses.
+                <div className="p-8 bg-[#111111] border border-[#292929] text-center space-y-4">
+                  <Package size={36} className="text-[#A6A6A6] mx-auto stroke-[1.2]" />
+                  <p className="font-['Syne'] text-base uppercase font-bold text-[#F5F5F5]">NO ORDERS ARCHIVED</p>
+                  <p className="text-xs text-[#A6A6A6] font-mono max-w-sm mx-auto">
+                    You have not placed any orders yet. Discover our latest alternative drops.
                   </p>
-                  <div className="pt-2">
-                    <Button variant="primary" size="md" to="/shop">
-                      Explore Repertoire
-                    </Button>
-                  </div>
+                  <Link
+                    to="/shop"
+                    className="inline-block px-5 py-2.5 bg-[#B8FF00] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold"
+                  >
+                    EXPLORE SHOP
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {orders.map((ord) => (
                     <div
-                      key={ord.orderNumber || ord.id}
-                      className="glass-panel p-5 sm:p-6 border-white/10 bg-[#0E1018]/90 hover:border-white/20 transition-colors space-y-4 rounded-xs"
+                      key={ord.id}
+                      className="p-5 bg-[#171717] border border-[#292929] space-y-4 hover:border-[#B8FF00]/40 transition-colors"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#292929] pb-3">
                         <div className="space-y-0.5">
-                          <span className="font-mono text-sm font-semibold text-[#D4AF37]">
+                          <span className="font-mono text-xs font-bold text-[#F5F5F5]">
                             {ord.orderNumber || ord.id}
                           </span>
-                          <p className="text-[11px] font-mono text-gray-400">
-                            Placed on {new Date(ord.createdAt || Date.now()).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
+                          <p className="text-[10px] text-[#A6A6A6] font-mono">
+                            {new Date(ord.createdAt).toLocaleDateString('en-IN', {
                               year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
                             })}
                           </p>
                         </div>
 
                         <div className="flex items-center gap-3">
                           <span
-                            className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest border rounded-xs ${getStatusBadge(
+                            className={`px-2.5 py-0.5 text-[10px] font-mono uppercase tracking-wider border font-bold ${getStatusBadge(
                               ord.status
                             )}`}
                           >
-                            {ord.status || 'PENDING'}
+                            {ord.status || 'PROCESSING'}
                           </span>
-                          <span className="font-serif text-lg font-light text-white">
-                            {formatCurrency(ord.total)}
+                          <span className="font-mono text-sm font-bold text-[#F5F5F5]">
+                            {formatCurrency(ord.totalAmount)}
                           </span>
                         </div>
                       </div>
 
-                      {/* Items Preview */}
-                      <div className="space-y-2">
-                        {ord.items &&
-                          ord.items.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-xs font-mono py-1 border-b border-white/5 last:border-0"
-                            >
-                              <div className="flex items-center gap-3">
-                                {item.image && (
-                                  <img
-                                    src={item.image}
-                                    alt={item.name}
-                                    className="w-10 h-12 object-cover border border-white/10"
-                                  />
-                                )}
-                                <div>
-                                  <p className="text-white font-medium">{item.name}</p>
-                                  <p className="text-[10px] text-gray-400">
-                                    Qty: {item.quantity} {item.size && `• Size: ${item.size}`}{' '}
-                                    {item.color && `• Hue: ${item.color}`}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-gray-300">{formatCurrency(item.price * item.quantity)}</span>
+                      {/* Items */}
+                      <div className="divide-y divide-[#292929]">
+                        {ord.items?.map((item, idx) => (
+                          <div key={idx} className="py-2.5 flex items-center gap-3">
+                            {item.image && (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-10 h-12 object-cover bg-[#111111] border border-[#292929]"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-['Syne'] uppercase text-xs font-bold text-[#F5F5F5] truncate">
+                                {item.name}
+                              </p>
+                              <p className="text-[10px] text-[#A6A6A6] font-mono">
+                                {item.size && `Size ${item.size}`} {item.color && `• ${item.color}`} • Qty {item.quantity}
+                              </p>
                             </div>
-                          ))}
+                            <span className="font-mono text-xs text-[#F5F5F5]">
+                              {formatCurrency(item.price * item.quantity)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
 
-                      {/* Footer Actions */}
-                      <div className="flex items-center justify-between pt-2 text-[11px] font-mono text-gray-400 border-t border-white/5">
-                        <span>Courier: White-Glove Dispatch Protocol</span>
+                      <div className="border-t border-[#292929] pt-2 flex items-center justify-between text-[11px] text-[#A6A6A6] font-mono">
+                        <span>Destination: {ord.city || 'Standard Address'}</span>
                         <Link
                           to={`/order-confirmation/${ord.orderNumber || ord.id}`}
                           state={{ order: ord }}
-                          className="text-[#D4AF37] hover:underline flex items-center gap-1 font-semibold"
+                          className="text-[#B8FF00] hover:underline uppercase text-[10px]"
                         >
-                          <span>Full Monograph Receipt</span>
-                          <ChevronRight size={12} />
+                          VIEW RECEIPT →
                         </Link>
                       </div>
                     </div>
@@ -347,117 +408,275 @@ export default function AccountPage() {
             </div>
           )}
 
-          {/* TAB 2: PROFILE PREFERENCES */}
+          {/* TAB 2: PROFILE */}
           {activeTab === 'profile' && (
-            <div className="glass-panel p-6 sm:p-8 border-white/10 bg-[#0E1018]/90 space-y-6 rounded-xs">
-              <div className="border-b border-white/10 pb-3">
-                <h2 className="font-serif text-2xl text-white">Patron Delivery & Dossier</h2>
-                <p className="text-xs font-mono text-gray-400 mt-1">
-                  Saved coordinates are automatically applied during bespoke checkout.
-                </p>
+            <div className="space-y-6">
+              <div className="border-b border-[#292929] pb-3">
+                <h2 className="font-['Oswald'] uppercase text-xl font-bold tracking-wider text-[#F5F5F5]">
+                  PATRON PROFILE
+                </h2>
               </div>
 
               {feedback.text && (
                 <div
-                  className={`p-3 text-xs font-mono border ${
+                  className={`p-3.5 border text-xs font-mono ${
                     feedback.type === 'success'
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                      : 'border-red-500/40 bg-red-500/10 text-red-300'
+                      ? 'border-[#B8FF00] bg-[#171717] text-[#B8FF00]'
+                      : 'border-[#8B0000] bg-[#171717] text-[#8B0000]'
                   }`}
                 >
                   {feedback.text}
                 </div>
               )}
 
-              <form onSubmit={handleProfileSubmit} className="space-y-5">
+              <form onSubmit={handleProfileSubmit} className="space-y-4 bg-[#111111] p-6 border border-[#292929]">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                      Full Legal Name
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      FULL NAME
                     </label>
                     <input
                       type="text"
                       value={profileForm.name}
                       onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                      required
-                      className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                      Primary Contact Number
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      EMAIL ADDRESS
+                    </label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#A6A6A6] font-mono opacity-60 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      PHONE NUMBER
                     </label>
                     <input
                       type="tel"
                       value={profileForm.phone}
                       onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                       placeholder="+91 98765 43210"
-                      className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                    Bespoke Courier Delivery Address
-                  </label>
-                  <input
-                    type="text"
-                    value={profileForm.address}
-                    onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                    placeholder="Apartment, Studio, Suite, Street"
-                    className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.city}
-                      onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                      className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                      State / Province
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.state}
-                      onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                      className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] uppercase tracking-wider font-mono text-gray-300">
-                      Postal Code / PIN
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.postalCode}
-                      onChange={(e) => setProfileForm({ ...profileForm, postalCode: e.target.value })}
-                      className="w-full bg-[#141724] border border-white/15 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    size="md"
+                  <button
                     type="submit"
                     disabled={profileSaving}
+                    className="px-6 py-3 bg-[#B8FF00] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold hover:bg-[#cbfb27] transition-all cursor-pointer"
                   >
-                    {profileSaving ? 'Saving Preferences...' : 'Archive Preferences'}
-                  </Button>
+                    {profileSaving ? 'SAVING...' : 'SAVE CHANGES'}
+                  </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* TAB 3: ADDRESSES */}
+          {activeTab === 'addresses' && (
+            <div className="space-y-6">
+              <div className="border-b border-[#292929] pb-3">
+                <h2 className="font-['Oswald'] uppercase text-xl font-bold tracking-wider text-[#F5F5F5]">
+                  SHIPPING ADDRESSES
+                </h2>
+              </div>
+
+              <form onSubmit={handleProfileSubmit} className="space-y-4 bg-[#111111] p-6 border border-[#292929]">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                    STREET ADDRESS
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.address}
+                    onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                    placeholder="e.g. 4B Gothic Quarter, Main Avenue"
+                    className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      CITY
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.city}
+                      onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                      placeholder="Mumbai"
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      STATE
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.state}
+                      onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                      placeholder="Maharashtra"
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-[#A6A6A6] font-mono">
+                      POSTAL CODE
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.postalCode}
+                      onChange={(e) => setProfileForm({ ...profileForm, postalCode: e.target.value })}
+                      placeholder="400001"
+                      className="w-full bg-[#171717] border border-[#292929] p-3 text-xs text-[#F5F5F5] focus:outline-none focus:border-[#B8FF00] font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-6 py-3 bg-[#B8FF00] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold hover:bg-[#cbfb27] transition-all cursor-pointer"
+                  >
+                    {profileSaving ? 'SAVING...' : 'UPDATE ADDRESS'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 4: WISHLIST */}
+          {activeTab === 'wishlist' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[#292929] pb-3">
+                <h2 className="font-['Oswald'] uppercase text-xl font-bold tracking-wider text-[#F5F5F5]">
+                  SAVED WISHLIST
+                </h2>
+                <span className="text-xs font-mono text-[#A6A6A6]">
+                  {wishlist.length} {wishlist.length === 1 ? 'ITEM' : 'ITEMS'}
+                </span>
+              </div>
+
+              {wishlist.length === 0 ? (
+                <div className="p-8 bg-[#111111] border border-[#292929] text-center space-y-4">
+                  <Heart size={36} className="text-[#A6A6A6] mx-auto stroke-[1.2]" />
+                  <p className="font-['Syne'] text-base uppercase font-bold text-[#F5F5F5]">WISHLIST IS EMPTY</p>
+                  <p className="text-xs text-[#A6A6A6] font-mono max-w-sm mx-auto">
+                    Save products to your wishlist while browsing to track stock and sales.
+                  </p>
+                  <Link
+                    to="/shop"
+                    className="inline-block px-5 py-2.5 bg-[#B8FF00] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold"
+                  >
+                    DISCOVER PRODUCTS
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  {wishlist.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-[#171717] border border-[#292929] p-3 flex flex-col justify-between group"
+                    >
+                      <Link to={`/product/${item.id}`} className="aspect-[3/4] overflow-hidden bg-[#111111] relative block mb-3">
+                        <img
+                          src={item.images ? item.images[0] : ''}
+                          alt={item.name}
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85'
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      </Link>
+
+                      <div className="space-y-2">
+                        <span className="text-[10px] uppercase tracking-widest text-[#B8FF00] font-mono block">
+                          {item.category}
+                        </span>
+                        <Link
+                          to={`/product/${item.id}`}
+                          className="font-['Syne'] text-sm uppercase font-bold text-[#F5F5F5] hover:text-[#B8FF00] line-clamp-1 block"
+                        >
+                          {item.name}
+                        </Link>
+                        <span className="font-mono text-xs font-bold text-[#F5F5F5] block">
+                          {formatCurrency(item.price)}
+                        </span>
+
+                        <div className="pt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => addToCart(item, item.sizes?.[0] || 'M', item.colors?.[0] || 'Black', 1)}
+                            className="flex-1 py-2 bg-[#B8FF00] hover:bg-[#cbfb27] text-[#090909] font-['Oswald'] text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <ShoppingBag size={13} />
+                            <span>ADD TO BAG</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeFromWishlist(item.id)}
+                            aria-label="Remove item from wishlist"
+                            className="p-2 border border-[#292929] text-[#A6A6A6] hover:text-[#8B0000] cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: SETTINGS */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="border-b border-[#292929] pb-3">
+                <h2 className="font-['Oswald'] uppercase text-xl font-bold tracking-wider text-[#F5F5F5]">
+                  ACCOUNT SETTINGS
+                </h2>
+              </div>
+
+              <div className="p-6 bg-[#111111] border border-[#292929] space-y-5">
+                <div>
+                  <h3 className="font-['Oswald'] uppercase text-sm font-bold text-[#F5F5F5]">SECURITY & CREDENTIALS</h3>
+                  <p className="text-xs text-[#A6A6A6] font-mono mt-1">
+                    Your password is encrypted using high-cost bcrypt hashing. Session tokens are protected via secure HTTP-only cookies.
+                  </p>
+                </div>
+
+                <div className="border-t border-[#292929] pt-4">
+                  <h3 className="font-['Oswald'] uppercase text-sm font-bold text-[#F5F5F5]">ORDER NOTIFICATIONS</h3>
+                  <p className="text-xs text-[#A6A6A6] font-mono mt-1">
+                    Automated courier notifications are dispatched to <strong>{user?.email}</strong>.
+                  </p>
+                </div>
+
+                <div className="border-t border-[#292929] pt-4">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="px-5 py-2.5 border border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white font-['Oswald'] text-xs uppercase tracking-wider font-bold transition-all cursor-pointer"
+                  >
+                    SIGN OUT OF ALL SESSIONS
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

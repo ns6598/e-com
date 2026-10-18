@@ -15,6 +15,8 @@ export const createOrderSchema = z.object({
   customerName: z.string().trim().min(2, 'Full customer name is required').optional(),
   customerEmail: z.string().trim().email('Valid email address is required').optional(),
   customerPhone: z.string().trim().min(6, 'Contact phone number is required').optional(),
+  addressId: z.string().trim().optional().nullable(),
+  cartId: z.string().trim().optional().nullable(),
   address: z.string().trim().min(5, 'Delivery street address is required').optional(),
   city: z.string().trim().min(2, 'City is required').optional(),
   state: z.string().trim().min(2, 'State / Province is required').optional(),

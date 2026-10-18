@@ -1,34 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ShoppingBag, Heart, Menu, X, Search, Check, Copy, Sparkles, Ruler, User } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  ShoppingBag,
+  Heart,
+  Menu,
+  X,
+  Search,
+  User,
+  ChevronDown,
+  ArrowRight,
+  Flame,
+  Sparkles,
+  ArrowUpRight,
+} from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import { useAuth } from '../../context/AuthContext'
 import WishlistDrawer from '../wishlist/WishlistDrawer'
-import SizeChartModal from '../common/SizeChartModal'
+import productService from '../../services/productService'
+import { formatCurrency } from '../../utils/formatters'
 
+// Configurable Top Announcement Bar Messages
+const ANNOUNCEMENTS = [
+  'FREE EXPRESS COURIER ON ORDERS OVER ₹2,999 • WORLDWIDE DISPATCH',
+  'DARK REBELLION DROP MMXXVI • LIMITED EDITORIAL RUN • NO RESTOCKS',
+  'USE CODE AUREVA15 FOR 15% OFF INAUGURAL ORDERS',
+]
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [wishlistOpen, setWishlistOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [copiedCode, setCopiedCode] = useState(false)
-  const [sizeChartOpen, setSizeChartOpen] = useState(false)
+  const [activeMegaMenu, setActiveMegaMenu] = useState(null) // 'shop' | 'collections' | null
+  const [announcementIndex, setAnnouncementIndex] = useState(0)
 
   const location = useLocation()
   const navigate = useNavigate()
   const searchInputRef = useRef(null)
+  const megaMenuTimeoutRef = useRef(null)
 
   const { openCart, totalItems, cartBounced } = useCart()
   const { totalWishlist } = useWishlist()
   const { user, isAuthenticated, isAdmin } = useAuth()
 
-  const isHomePage = location.pathname === '/'
+  // Rotate announcement bar every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAnnouncementIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [])
 
-
+  // Header scroll appearance
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20)
@@ -38,24 +66,56 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Close overlays on route change
   useEffect(() => {
     setMobileMenuOpen(false)
     setSearchOpen(false)
+    setActiveMegaMenu(null)
   }, [location.pathname])
 
+  // Focus search input when overlay opens
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
       searchInputRef.current.focus()
     }
   }, [searchOpen])
 
-  const handleCopyLaunchCode = (e) => {
-    e.preventDefault()
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText('AUREVA15')
+  // Debounced search query handler
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      setSearching(false)
+      return
     }
-    setCopiedCode(true)
-    setTimeout(() => setCopiedCode(false), 2500)
+
+    setSearching(true)
+    const timeoutId = setTimeout(() => {
+      productService
+        .getProducts({ search: searchQuery.trim(), limit: 6 })
+        .then((res) => {
+          setSearchResults(res.items || [])
+        })
+        .catch(() => {
+          setSearchResults([])
+        })
+        .finally(() => {
+          setSearching(false)
+        })
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery])
+
+  // Mega menu hover delay management
+  const handleMegaEnter = (menu) => {
+    if (megaMenuTimeoutRef.current) clearTimeout(megaMenuTimeoutRef.current)
+    setActiveMegaMenu(menu)
+  }
+
+  const handleMegaLeave = () => {
+    megaMenuTimeoutRef.current = setTimeout(() => {
+      setActiveMegaMenu(null)
+    }, 200)
   }
 
   const handleSearchSubmit = (e) => {
@@ -67,317 +127,545 @@ export default function Header() {
     }
   }
 
-  const navLinks = [
-    { label: 'Shop Catalog', to: '/shop' },
-    { label: 'Runway Lookbook', to: '/shop?filter=collections' },
-    { label: 'New Arrivals', to: '/shop?filter=new' },
-    { label: 'The Manifesto', to: '/about' },
-    { label: 'VIP Concierge', to: '/contact' },
-  ]
-
   return (
     <>
-      {/* Top Haute Couture Announcement Bar */}
-      <aside aria-label="Announcement" className="bg-[#050609] text-gray-300 text-[10px] tracking-[0.26em] uppercase py-2.5 px-4 text-center border-b border-white/5 z-50 relative">
-        <div className="max-w-7xl mx-auto flex items-center justify-between sm:justify-center gap-4 sm:gap-8">
-          <span className="hidden lg:inline text-gray-500 font-mono">PARIS • MILAN • TOKYO</span>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-300">INAUGURAL EDIT: 15% COMPLIMENTARY WITH CODE</span>
-            <button
-              type="button"
-              onClick={handleCopyLaunchCode}
-              title="Click to copy code"
-              className="inline-flex items-center gap-1 font-mono font-bold gold-gradient-bg text-[#08090D] px-2 py-0.5 tracking-wider hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+      {/* 1. Configurable Top Announcement Bar */}
+      <aside
+        aria-label="Announcement"
+        className="bg-[#111111] text-[#A6A6A6] text-[11px] tracking-[0.2em] uppercase py-2 px-4 text-center border-b border-[#292929] z-40 relative select-none"
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-between sm:justify-center gap-4">
+          <span className="hidden lg:inline text-[#737373] font-mono text-[10px]">
+            [ AUREVA SUBVERSIVE COUTURE ]
+          </span>
+
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={announcementIndex}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.25 }}
+              className="font-mono text-[#F5F5F5] font-medium"
             >
-              <span>AUREVA15</span>
-              {copiedCode ? <Check size={11} className="text-emerald-900" /> : <Copy size={10} />}
-            </button>
-            {copiedCode && (
-              <span className="text-[#D4AF37] font-mono text-[9px] tracking-widest hidden sm:inline">
-                [COPIED]
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setSizeChartOpen(true)}
-              className="inline-flex items-center gap-1.5 text-gray-400 hover:text-[#D4AF37] font-mono transition-colors cursor-pointer"
-              title="View Atelier Size Chart & Measurement Guide"
-            >
-              <Ruler size={11} className="text-[#D4AF37]" />
-              <span>SIZE CHART</span>
-            </button>
-            <span className="hidden sm:inline text-gray-500 font-mono">COMPLIMENTARY COURIER OVER ₹2,999</span>
-          </div>
+              {ANNOUNCEMENTS[announcementIndex]}
+            </motion.p>
+          </AnimatePresence>
+
+          <span className="hidden lg:inline text-[#B8FF00] font-mono text-[10px] font-bold">
+            PARIS • BERLIN • TOKYO
+          </span>
         </div>
       </aside>
 
-      {/* Floating Liquid Glass Persistent Header */}
+      {/* 2. Main Sticky Navigation Bar */}
       <header
-        className={`sticky top-0 z-40 transition-all duration-300 ${
+        className={`sticky top-0 z-40 w-full transition-all duration-300 border-b ${
           scrolled
-            ? 'glass-panel bg-[#080A10]/90 backdrop-blur-xl border-b border-white/10 shadow-2xl py-3'
-            : isHomePage
-            ? 'bg-[#080A10]/75 backdrop-blur-lg border-b border-white/5 py-4'
-            : 'bg-[#080A10]/90 backdrop-blur-lg border-b border-white/10 py-4'
+            ? 'bg-[#090909]/95 backdrop-blur-md border-[#292929] py-3 shadow-2xl'
+            : 'bg-[#090909] border-[#292929]/70 py-4.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            {/* Desktop Left Nav */}
-            <nav className="hidden md:flex items-center space-x-6 lg:space-x-8" aria-label="Primary Navigation">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    `text-xs uppercase tracking-[0.2em] font-medium transition-all relative py-1 hover:text-[#D4AF37] ${
-                      isActive && !link.to.includes('?') ? 'text-[#D4AF37] font-semibold' : 'text-gray-300'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {link.label}
-                      {isActive && !link.to.includes('?') && (
-                        <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
+            {/* LEFT: AUREVA Brand Logo */}
+            <div className="flex items-center gap-6">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="lg:hidden p-1.5 text-[#F5F5F5] hover:text-[#B8FF00] transition-colors cursor-pointer"
+                aria-label="Open mobile navigation menu"
+              >
+                <Menu size={22} />
+              </button>
 
-            {/* Mobile Menu Trigger */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-[#D4AF37] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] cursor-pointer"
-              aria-label="Toggle navigation menu"
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-
-            {/* AUREVA Brand Mark */}
-            <div className="text-center">
               <Link
                 to="/"
-                className="group inline-flex flex-col items-center focus-visible:outline-none select-none"
+                data-cursor="explore"
+                className="group flex items-center gap-1.5 select-none"
+                aria-label="AUREVA Homepage"
               >
-                <span className="font-serif text-2xl sm:text-3xl lg:text-4xl tracking-[0.26em] font-light text-white group-hover:text-[#D4AF37] transition-colors">
+                <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-[-0.04em] text-[#F5F5F5] group-hover:text-white transition-colors">
                   AUREVA
                 </span>
-                <span className="text-[8px] uppercase tracking-[0.4em] text-gray-400 group-hover:text-[#D4AF37]/80 transition-colors -mt-0.5">
-                  Style Without Boundaries
-                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B8FF00] inline-block shadow-[0_0_8px_#B8FF00] group-hover:scale-125 transition-transform" />
               </Link>
             </div>
 
-            {/* Right Action Icons: Search, Wishlist, Shopping Bag */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Search Button */}
+            {/* CENTER: Desktop Primary Navigation Links with Mega Menus */}
+            <nav className="hidden lg:flex items-center space-x-8" aria-label="Main Navigation">
+              {/* SHOP with Mega Menu */}
+              <div
+                className="relative py-2"
+                onMouseEnter={() => handleMegaEnter('shop')}
+                onMouseLeave={handleMegaLeave}
+              >
+                <NavLink
+                  to="/shop"
+                  className={({ isActive }) =>
+                    `font-condensed text-[14px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center gap-1 ${
+                      isActive || activeMegaMenu === 'shop'
+                        ? 'text-[#B8FF00]'
+                        : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                    }`
+                  }
+                >
+                  <span>SHOP</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      activeMegaMenu === 'shop' ? 'rotate-180 text-[#B8FF00]' : ''
+                    }`}
+                  />
+                </NavLink>
+
+                {/* SHOP Desktop Mega Menu */}
+                <AnimatePresence>
+                  {activeMegaMenu === 'shop' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute top-full -left-12 w-[680px] bg-[#111111] border border-[#292929] shadow-2xl p-6 grid grid-cols-12 gap-6 z-50 rounded-xs"
+                    >
+                      <div className="col-span-7 space-y-4">
+                        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#B8FF00] border-b border-[#292929] pb-2">
+                          SHOP DEPARTMENTS
+                        </div>
+                        <ul className="space-y-3 font-condensed tracking-wider uppercase text-sm">
+                          {[
+                            { name: 'WOMEN', path: '/shop?category=women', tag: 'Drop MMXXVI' },
+                            { name: 'MEN', path: '/shop?category=men', tag: 'Tailored' },
+                            { name: 'ACCESSORIES', path: '/shop?category=accessories', tag: 'Leather & Silver' },
+                            { name: 'COLLECTIONS', path: '/shop?filter=collections', tag: 'Archive' },
+                            { name: 'SALE PIECES', path: '/shop?filter=sale', tag: 'Up to 30% Off', highlight: true },
+                          ].map((cat) => (
+                            <li key={cat.path}>
+                              <Link
+                                to={cat.path}
+                                onClick={() => setActiveMegaMenu(null)}
+                                className={`flex items-center justify-between group py-1 transition-colors ${
+                                  cat.highlight
+                                    ? 'text-[#B8FF00] hover:text-[#D1FF38]'
+                                    : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                                }`}
+                              >
+                                <span className="font-semibold text-[15px]">{cat.name}</span>
+                                <span className="font-mono text-[10px] text-[#A6A6A6] group-hover:text-[#F5F5F5] transition-colors">
+                                  {cat.tag} →
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="col-span-5 bg-[#171717] border border-[#292929] p-4 flex flex-col justify-between">
+                        <div>
+                          <div className="text-[9px] font-mono tracking-widest text-[#B8FF00] uppercase mb-1">
+                            FEATURED DROP
+                          </div>
+                          <h4 className="font-display font-bold text-base text-[#F5F5F5] leading-tight">
+                            CYBER GRUNGE MONOGRAPH
+                          </h4>
+                          <p className="text-xs text-[#A6A6A6] mt-2 font-light leading-relaxed">
+                            Heavy distress, sculptural silhouettes, and raw metal hardware.
+                          </p>
+                        </div>
+                        <Link
+                          to="/shop?sort=newest"
+                          onClick={() => setActiveMegaMenu(null)}
+                          className="mt-4 inline-flex items-center gap-1.5 text-xs font-mono tracking-widest text-[#B8FF00] uppercase hover:underline"
+                        >
+                          <span>DISCOVER NOW</span>
+                          <ArrowRight size={12} />
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* NEW ARRIVALS */}
+              <NavLink
+                to="/shop?sort=newest"
+                className={({ isActive }) =>
+                  `font-condensed text-[14px] uppercase tracking-[0.14em] font-semibold transition-colors ${
+                    isActive ? 'text-[#B8FF00]' : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                  }`
+                }
+              >
+                NEW ARRIVALS
+              </NavLink>
+
+              {/* COLLECTIONS with Mega Menu */}
+              <div
+                className="relative py-2"
+                onMouseEnter={() => handleMegaEnter('collections')}
+                onMouseLeave={handleMegaLeave}
+              >
+                <NavLink
+                  to="/shop?filter=collections"
+                  className={({ isActive }) =>
+                    `font-condensed text-[14px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center gap-1 ${
+                      isActive || activeMegaMenu === 'collections'
+                        ? 'text-[#B8FF00]'
+                        : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                    }`
+                  }
+                >
+                  <span>COLLECTIONS</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      activeMegaMenu === 'collections' ? 'rotate-180 text-[#B8FF00]' : ''
+                    }`}
+                  />
+                </NavLink>
+
+                {/* COLLECTIONS Desktop Mega Menu */}
+                <AnimatePresence>
+                  {activeMegaMenu === 'collections' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute top-full -left-20 w-[600px] bg-[#111111] border border-[#292929] shadow-2xl p-6 grid grid-cols-2 gap-6 z-50 rounded-xs"
+                    >
+                      <div className="space-y-3">
+                        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#B8FF00] border-b border-[#292929] pb-2">
+                          ACTIVE CHAPTERS
+                        </div>
+                        <ul className="space-y-2.5 font-condensed tracking-wider uppercase text-sm">
+                          {[
+                            { name: 'NEW DROP MMXXVI', path: '/shop?sort=newest' },
+                            { name: 'DARK ESSENTIALS', path: '/shop?category=women' },
+                            { name: 'NIGHT COUTURE', path: '/shop?category=men' },
+                            { name: 'SIGNATURE HARDWARE', path: '/shop?category=accessories' },
+                          ].map((item) => (
+                            <li key={item.path}>
+                              <Link
+                                to={item.path}
+                                onClick={() => setActiveMegaMenu(null)}
+                                className="block py-1 text-[#F5F5F5] hover:text-[#B8FF00] transition-colors"
+                              >
+                                {item.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="space-y-3 border-l border-[#292929] pl-6 flex flex-col justify-between">
+                        <div>
+                          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#A6A6A6]">
+                            MANIFESTO
+                          </div>
+                          <p className="text-xs text-[#A6A6A6] mt-2 font-light leading-relaxed">
+                            "AUREVA is not just what you wear. It is how you arrive." Garments crafted for permanent defiance.
+                          </p>
+                        </div>
+                        <Link
+                          to="/about"
+                          onClick={() => setActiveMegaMenu(null)}
+                          className="inline-flex items-center gap-1.5 text-xs font-mono tracking-widest text-[#B8FF00] uppercase hover:underline"
+                        >
+                          <span>READ MANIFESTO →</span>
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* SALE */}
+              <NavLink
+                to="/shop?filter=sale"
+                className={({ isActive }) =>
+                  `font-condensed text-[14px] uppercase tracking-[0.14em] font-semibold transition-colors flex items-center gap-1.5 ${
+                    isActive ? 'text-[#B8FF00]' : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                  }`
+                }
+              >
+                <span>SALE</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B8FF00] animate-pulse" />
+              </NavLink>
+
+              {/* ABOUT */}
+              <NavLink
+                to="/about"
+                className={({ isActive }) =>
+                  `font-condensed text-[14px] uppercase tracking-[0.14em] font-semibold transition-colors ${
+                    isActive ? 'text-[#B8FF00]' : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                  }`
+                }
+              >
+                ABOUT
+              </NavLink>
+            </nav>
+
+            {/* RIGHT: Action Icons (Search, Account, Wishlist, Bag) */}
+            <div className="flex items-center space-x-4 sm:space-x-5 text-[#F5F5F5]">
+              {/* Search Trigger */}
               <button
                 type="button"
-                onClick={() => setSearchOpen(!searchOpen)}
-                aria-label="Toggle search catalog"
-                className={`p-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] ${
-                  searchOpen ? 'text-[#D4AF37]' : 'text-gray-300 hover:text-[#D4AF37]'
-                }`}
-                title="Search collection"
+                onClick={() => setSearchOpen(true)}
+                className="p-1.5 hover:text-[#B8FF00] transition-colors cursor-pointer flex items-center gap-1.5"
+                aria-label="Open search"
               >
-                <Search size={18} />
+                <Search size={19} />
+                <span className="hidden xl:inline text-xs font-mono tracking-widest uppercase text-[#A6A6A6]">
+                  SEARCH
+                </span>
               </button>
 
-              {/* Size Chart Button */}
-              <button
-                type="button"
-                onClick={() => setSizeChartOpen(true)}
-                aria-label="Open Atelier Size Chart & Fit Guide"
-                className="p-2 text-gray-300 hover:text-[#D4AF37] transition-colors cursor-pointer hidden md:flex items-center gap-1 font-mono text-[11px] tracking-wider"
-                title="Size Chart & Fit Guide"
+              {/* Account */}
+              <Link
+                to={isAuthenticated ? '/account' : '/login'}
+                className="p-1.5 hover:text-[#B8FF00] transition-colors flex items-center gap-1.5"
+                aria-label={isAuthenticated ? 'Patron Account' : 'Sign In'}
               >
-                <Ruler size={15} />
-                <span className="hidden xl:inline uppercase">Sizing</span>
-              </button>
+                <User size={19} />
+                <span className="hidden xl:inline text-xs font-mono tracking-widest uppercase text-[#A6A6A6]">
+                  {isAuthenticated ? (user?.name?.split(' ')[0] || 'ACCOUNT') : 'ACCOUNT'}
+                </span>
+              </Link>
 
-              {/* Wishlist Button */}
+              {/* Wishlist */}
               <button
                 type="button"
                 onClick={() => setWishlistOpen(true)}
-                aria-label={`Open wishlist with ${totalWishlist} saved items`}
-                className="relative p-2 text-gray-300 hover:text-[#D4AF37] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] cursor-pointer"
+                className="relative p-1.5 hover:text-[#B8FF00] transition-colors cursor-pointer"
+                aria-label={`Wishlist (${totalWishlist} items)`}
               >
-                <Heart size={18} />
+                <Heart size={19} />
                 {totalWishlist > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#7E1828] text-[9px] font-bold text-white shadow-xs border border-white/20">
+                  <span className="absolute -top-1 -right-1 font-mono text-[10px] font-bold bg-[#B8FF00] text-[#090909] w-4 h-4 rounded-full flex items-center justify-center">
                     {totalWishlist}
                   </span>
                 )}
               </button>
 
-              {/* Patron Account / Sign In Link */}
-              <Link
-                to={isAuthenticated ? '/account' : '/login'}
-                aria-label={isAuthenticated ? `Patron Account: ${user?.name}` : 'Sign In to Patron Account'}
-                className="p-2 text-gray-300 hover:text-[#D4AF37] transition-colors cursor-pointer relative flex items-center"
-                title={isAuthenticated ? `Dossier: ${user?.name}` : 'Patron Sign In'}
-              >
-                {isAuthenticated ? (
-                  <span className="h-6 w-6 rounded-full border border-[#D4AF37] gold-gradient-bg text-[#08090D] font-bold text-[10px] flex items-center justify-center font-mono shadow-xs">
-                    {(user?.name || user?.email || 'A')[0].toUpperCase()}
-                  </span>
-                ) : (
-                  <User size={18} />
-                )}
-              </Link>
-
-
-              {/* Shopping Bag Button with Live Motion Bounce */}
-              <motion.button
+              {/* Bag */}
+              <button
                 type="button"
                 onClick={openCart}
-                animate={cartBounced ? { scale: [1, 1.25, 0.95, 1.1, 1], rotate: [0, -6, 6, -3, 0] } : { scale: 1, rotate: 0 }}
-                transition={{ duration: 0.55 }}
-                aria-label={`Open shopping bag with ${totalItems} items`}
-                className={`relative p-2 text-gray-300 hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37] cursor-pointer ${
-                  cartBounced ? 'text-[#D4AF37]' : ''
+                className={`relative p-1.5 hover:text-[#B8FF00] transition-colors cursor-pointer ${
+                  cartBounced ? 'scale-110' : ''
                 }`}
+                aria-label={`Shopping Bag (${totalItems} items)`}
               >
-                <ShoppingBag size={18} />
-                <motion.span
-                  key={totalItems}
-                  initial={{ scale: 1.35, color: '#D4AF37' }}
-                  animate={{ scale: 1, color: '#FFFFFF' }}
-                  className="hidden sm:inline text-xs font-mono tracking-wider font-semibold text-white"
-                >
-                  ({totalItems})
-                </motion.span>
-                {cartBounced && (
-                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#D4AF37] animate-ping" />
-                )}
+                <ShoppingBag size={19} />
                 {totalItems > 0 && (
-                  <span className="sm:hidden absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full gold-gradient-bg text-[#08090D] text-[9px] font-bold">
+                  <span className="absolute -top-1 -right-1 font-mono text-[10px] font-bold bg-[#B8FF00] text-[#090909] w-4 h-4 rounded-full flex items-center justify-center">
                     {totalItems}
                   </span>
                 )}
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Liquid Glass Search Drawer */}
+      {/* 3. Fullscreen / Dark Search Overlay */}
+      <AnimatePresence>
         {searchOpen && (
-          <div className="border-t border-white/10 glass-panel bg-[#0B0D15]/95 px-4 py-3 mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="max-w-2xl mx-auto">
-              <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-                <Search size={16} className="text-gray-400 absolute left-3 pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="SEARCH SILHOUETTES, COATS, TROUSERS, LEATHERS..."
-                  className="w-full bg-[#121522] border border-white/15 pl-9 pr-24 py-2.5 text-xs tracking-wider uppercase text-white placeholder:text-gray-500 focus:outline-none focus:border-[#D4AF37]"
-                />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-[#090909]/95 backdrop-blur-xl flex flex-col justify-start p-6 md:p-12 overflow-y-auto"
+          >
+            <div className="max-w-4xl w-full mx-auto">
+              <div className="flex items-center justify-between pb-6 border-b border-[#292929]">
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#B8FF00]">
+                  SEARCH AUREVA CATALOGUE
+                </span>
                 <button
-                  type="submit"
-                  className="absolute right-2 gold-gradient-bg text-[#08090D] font-bold text-[10px] tracking-widest uppercase px-3.5 py-1.5 transition-opacity hover:opacity-90 cursor-pointer"
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  className="p-2 text-[#A6A6A6] hover:text-[#F5F5F5] transition-colors cursor-pointer"
+                  aria-label="Close search overlay"
                 >
-                  Search
+                  <X size={24} />
                 </button>
-              </form>
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* Mobile Navigation Drawer */}
+              {/* Search Form */}
+              <form onSubmit={handleSearchSubmit} className="mt-8">
+                <div className="relative flex items-center border-b-2 border-[#292929] focus-within:border-[#B8FF00] transition-colors pb-3">
+                  <Search size={28} className="text-[#A6A6A6] mr-4 shrink-0" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="TYPE TO SEARCH (E.G. COAT, CORSET, BOOTS, NOIR)..."
+                    className="w-full bg-transparent text-[#F5F5F5] font-condensed text-2xl md:text-4xl tracking-wider placeholder-[#737373] uppercase focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="text-xs font-mono text-[#A6A6A6] hover:text-[#F5F5F5] cursor-pointer ml-2"
+                    >
+                      CLEAR
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              {/* Live Search Results */}
+              <div className="mt-8">
+                {searching ? (
+                  <div className="py-12 text-center font-mono text-xs text-[#A6A6A6] tracking-widest uppercase">
+                    SCANNING ATELIER ARCHIVES...
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between font-mono text-xs text-[#A6A6A6] uppercase tracking-wider">
+                      <span>{searchResults.length} PIECES DISCOVERED</span>
+                      <Link
+                        to={`/shop?search=${encodeURIComponent(searchQuery)}`}
+                        onClick={() => setSearchOpen(false)}
+                        className="text-[#B8FF00] hover:underline"
+                      >
+                        VIEW ALL RESULTS →
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {searchResults.map((product) => (
+                        <Link
+                          key={product.id}
+                          to={`/product/${product.slug || product.id}`}
+                          onClick={() => setSearchOpen(false)}
+                          className="alt-card p-3 flex gap-3 group hover:border-[#B8FF00] transition-colors"
+                        >
+                          <div className="w-16 h-20 bg-[#111111] shrink-0 overflow-hidden">
+                            <img
+                              src={product.images?.[0] || 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=80'}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-between py-0.5">
+                            <div>
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-[#A6A6A6] block">
+                                {product.category}
+                              </span>
+                              <h4 className="font-condensed font-semibold text-sm uppercase text-[#F5F5F5] line-clamp-1 group-hover:text-[#B8FF00] transition-colors">
+                                {product.name}
+                              </h4>
+                            </div>
+                            <span className="font-mono text-xs font-bold text-[#F5F5F5]">
+                              {formatCurrency(product.price)}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : searchQuery.trim() ? (
+                  <div className="py-12 text-center font-mono text-xs text-[#A6A6A6] tracking-widest uppercase">
+                    NO PIECES MATCH '{searchQuery}'. TRY SEARCHING 'LEATHER', 'JACKET', 'CORSET', OR 'SILK'.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. Fullscreen Mobile Navigation Menu */}
+      <AnimatePresence>
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 glass-panel bg-[#0B0D15]/98 px-6 py-8 mt-3 space-y-6 animate-in slide-in-from-top-2 duration-200 shadow-2xl">
-            <nav className="flex flex-col space-y-5" aria-label="Mobile Navigation Drawer">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors"
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-50 bg-[#090909] text-[#F5F5F5] flex flex-col justify-between p-6 overflow-y-auto"
+          >
+            {/* Mobile Header */}
+            <div className="flex items-center justify-between pb-6 border-b border-[#292929]">
+              <span className="font-display font-extrabold text-2xl tracking-tight text-[#F5F5F5]">
+                AUREVA
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 text-[#A6A6A6] hover:text-[#B8FF00] transition-colors cursor-pointer"
+                aria-label="Close mobile menu"
+              >
+                <X size={26} />
+              </button>
+            </div>
+
+            {/* Mobile Primary Links */}
+            <nav className="my-auto py-8 space-y-6">
+              {[
+                { label: 'SHOP ALL', to: '/shop' },
+                { label: 'NEW ARRIVALS', to: '/shop?sort=newest', accent: true },
+                { label: 'WOMEN', to: '/shop?category=women' },
+                { label: 'MEN', to: '/shop?category=men' },
+                { label: 'ACCESSORIES', to: '/shop?category=accessories' },
+                { label: 'COLLECTIONS', to: '/shop?filter=collections' },
+                { label: 'SALE', to: '/shop?filter=sale', sale: true },
+                { label: 'ABOUT AUREVA', to: '/about' },
+                { label: 'VIP CONCIERGE', to: '/contact' },
+              ].map((item, idx) => (
+                <motion.div
+                  key={item.to}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: idx * 0.04 + 0.1, duration: 0.25 }}
                 >
-                  {link.label}
-                </Link>
+                  <Link
+                    to={item.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block font-condensed text-3xl sm:text-4xl uppercase tracking-wider font-bold transition-colors ${
+                      item.sale
+                        ? 'text-[#B8FF00]'
+                        : item.accent
+                        ? 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                        : 'text-[#F5F5F5] hover:text-[#B8FF00]'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </motion.div>
               ))}
 
-              <Link
-                to="/cart"
-                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between pt-2 border-t border-white/10"
-              >
-                <span>Shopping Bag</span>
-                <span className="font-mono text-xs gold-gradient-bg text-[#08090D] font-bold px-2.5 py-1">
-                  {totalItems} items
-                </span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  setWishlistOpen(true)
-                }}
-                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between text-left cursor-pointer"
-              >
-                <span>Curated Wishlist</span>
-                <span className="font-mono text-xs bg-[#7E1828] text-white px-2.5 py-1 border border-white/20">
-                  {totalWishlist} saved
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  setSizeChartOpen(true)
-                }}
-                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between text-left cursor-pointer"
-              >
-                <span>Size Chart & Guide</span>
-                <Ruler size={18} className="text-[#D4AF37]" />
-              </button>
-
-              <Link
-                to={isAuthenticated ? '/account' : '/login'}
-                onClick={() => setMobileMenuOpen(false)}
-                className="font-serif text-2xl tracking-wide text-white hover:text-[#D4AF37] transition-colors flex items-center justify-between pt-2 border-t border-white/10"
-              >
-                <span>{isAuthenticated ? 'Patron Dossier' : 'Patron Sign In'}</span>
-                <User size={18} className="text-[#D4AF37]" />
-              </Link>
-
               {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="font-serif text-2xl tracking-wide text-[#D4AF37] hover:text-white transition-colors flex items-center justify-between"
-                >
-                  <span>Atelier Admin Console</span>
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 border border-[#D4AF37]">
-                    Curator
-                  </span>
-                </Link>
+                <div className="pt-4 border-t border-[#292929]">
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="font-mono text-xs uppercase tracking-widest text-[#B8FF00] font-bold block"
+                  >
+                    → ADMIN CONSOLE
+                  </Link>
+                </div>
               )}
             </nav>
 
-
-            <div className="pt-6 border-t border-white/10 flex flex-col space-y-2 text-[11px] tracking-widest uppercase text-gray-400 font-mono">
-              <p>Curated in Paris & Tokyo</p>
-              <p>Inquiries: concierge@aureva-studios.com</p>
+            {/* Mobile Footer Coordinates */}
+            <div className="pt-6 border-t border-[#292929] flex flex-col gap-2 font-mono text-[10px] tracking-widest uppercase text-[#737373]">
+              <div className="flex justify-between">
+                <span>CONCIERGE@AUREVA.COM</span>
+                <span>PARIS • BERLIN • TOKYO</span>
+              </div>
+              <p>© MMXXVI AUREVA. STYLE WITHOUT BOUNDARIES.</p>
             </div>
-          </div>
+          </motion.div>
         )}
-      </header>
+      </AnimatePresence>
 
-      {/* Persistent Wishlist Slide-Over */}
+      {/* 5. Persistent Wishlist Slide-Over */}
       <WishlistDrawer isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} />
-
-      {/* Persistent Atelier Size Chart Modal */}
-      <SizeChartModal isOpen={sizeChartOpen} onClose={() => setSizeChartOpen(false)} />
     </>
   )
 }

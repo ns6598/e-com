@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { X, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Trash2, ShoppingBag } from 'lucide-react'
 import { useWishlist } from '../../context/WishlistContext'
 import { useCart } from '../../context/CartContext'
 import { formatCurrency } from '../../utils/formatters'
@@ -10,40 +11,48 @@ export default function WishlistDrawer({ isOpen, onClose }) {
   const { wishlist, removeFromWishlist } = useWishlist()
   const { addToCart, openCart } = useCart()
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div
-        className="fixed inset-0 bg-[#06070A]/85 backdrop-blur-md transition-opacity duration-300"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 bg-[#0C0C0C]/80 backdrop-blur-md"
+            onClick={onClose}
+            aria-hidden="true"
+          />
 
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
-        <aside
-          role="dialog"
-          aria-modal="true"
-          aria-label="Saved Pieces"
-          className="w-screen max-w-md bg-[#0C0E16] border-l border-white/10 flex flex-col shadow-2xl text-white"
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#10131E]/60">
-            <div className="flex items-baseline gap-3">
-              <h2 className="font-serif text-2xl tracking-tight text-white">Saved Pieces</h2>
-              <span className="font-mono text-xs tracking-widest text-[#D4AF37] uppercase">
-                ({wishlist.length})
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close wishlist drawer"
-              className="p-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer"
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Saved Pieces"
+              className="w-screen max-w-md bg-[#171717] border-l border-white/10 flex flex-col shadow-2xl text-[#F6F2EA]"
             >
-              <X size={20} />
-            </button>
-          </div>
+              {/* Header */}
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#1E1E1E]/80">
+                <div className="flex items-baseline gap-3">
+                  <h2 className="font-serif text-2xl tracking-tight text-[#F6F2EA]">Saved Pieces</h2>
+                  <span className="font-mono text-xs tracking-widest text-[#D4AF37] uppercase">
+                    ({wishlist.length})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close wishlist drawer"
+                  className="p-1.5 text-[#D8D0C4] hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
           {/* Items */}
           <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-white/10">
@@ -138,8 +147,10 @@ export default function WishlistDrawer({ isOpen, onClose }) {
               </Button>
             </div>
           )}
-        </aside>
+        </motion.aside>
       </div>
     </div>
+      )}
+    </AnimatePresence>
   )
 }

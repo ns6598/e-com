@@ -94,6 +94,19 @@ export const authService = {
   },
 
   /**
+   * Update existing saved address
+   * @param {string} id
+   * @param {Object} addressData
+   */
+  updateAddress: async (id, addressData) => {
+    const response = await api.patch(`/users/me/addresses/${id}`, addressData)
+    if (response && response.success && response.data) {
+      return response.data
+    }
+    throw new Error(response?.message || 'Failed to update address')
+  },
+
+  /**
    * Delete saved address
    * @param {string} id
    */

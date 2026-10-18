@@ -2,7 +2,7 @@ import { prisma, dbStatus } from '../config/db.js'
 import { successResponse, errorResponse } from '../utils/response.js'
 
 // In-memory fallback address store
-const mockAddresses = new Map()
+export const mockAddresses = new Map()
 
 /**
  * Get current user profile

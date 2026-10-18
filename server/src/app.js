@@ -5,6 +5,7 @@ import config from './config/env.js'
 import apiRouter from './routes/index.js'
 import requestLogger from './middleware/requestLogger.js'
 import securityHeaders from './middleware/securityHeaders.js'
+import csrfProtection from './middleware/csrfProtection.js'
 import { apiLimiter } from './middleware/rateLimiter.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 
@@ -26,20 +27,28 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-Id', 'X-Idempotency-Key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-Id', 'X-Idempotency-Key', 'X-CSRF-Token'],
   })
 )
 
-// 3. Request body & cookie parsers with limits
-app.use(express.json({ limit: '2mb' }))
+// 3. Request body & cookie parsers with limits and rawBody capture for webhook signature verification
+app.use(
+  express.json({
+    limit: '2mb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf
+    },
+  })
+)
 app.use(express.urlencoded({ extended: true, limit: '2mb' }))
 app.use(cookieParser(config.cookieSecret))
 
 // 4. HTTP Request Audit Logger
 app.use(requestLogger)
 
-// 5. Global API Rate Limiter
+// 5. Global API Rate Limiter & CSRF Protection
 app.use('/api', apiLimiter)
+app.use('/api', csrfProtection)
 
 // 6. Root API Welcome Route
 app.get('/', (req, res) => {
