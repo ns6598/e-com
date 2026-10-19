@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext'
 import WishlistDrawer from '../wishlist/WishlistDrawer'
 import productService from '../../services/productService'
 import { formatCurrency } from '../../utils/formatters'
+import { getVaultTriggerProps } from '../../utils/vaultTrigger'
 
 // Configurable Top Announcement Bar Messages
 const ANNOUNCEMENTS = [
@@ -47,6 +48,7 @@ export default function Header() {
   const { openCart, totalItems, cartBounced } = useCart()
   const { totalWishlist } = useWishlist()
   const { user, isAuthenticated } = useAuth()
+  const vaultProps = getVaultTriggerProps()
 
   // Rotate announcement bar every 5 seconds
   useEffect(() => {
@@ -184,6 +186,7 @@ export default function Header() {
                 data-cursor="explore"
                 className="group flex items-center gap-1.5 select-none"
                 aria-label="AUREVA Homepage"
+                {...vaultProps}
               >
                 <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-[-0.04em] text-[#F5F5F5] group-hover:text-white transition-colors">
                   AUREVA

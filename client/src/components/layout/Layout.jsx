@@ -7,6 +7,7 @@ import ScrollToTop from './ScrollToTop'
 import ScrollProgress from '../motion/ScrollProgress'
 import CustomCursorSpotlight from '../motion/CustomCursorSpotlight'
 import CartFlyToast from '../motion/CartFlyToast'
+import VaultAccessModal from '../vault/VaultAccessModal'
 
 export default function Layout() {
   return (
@@ -44,6 +45,9 @@ export default function Layout() {
 
       {/* Cart Flyout / Drawer */}
       <CartDrawer />
+
+      {/* Global Hidden Vault Access Reveal Modal */}
+      <VaultAccessModal />
 
       {/* Persistent Dark Fashion Footer */}
       <Footer />

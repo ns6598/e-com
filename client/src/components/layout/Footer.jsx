@@ -62,96 +62,16 @@ function PinterestIcon({ size = 18, className = '' }) {
   )
 }
 
+import { getVaultTriggerProps } from '../../utils/vaultTrigger'
+
 export default function Footer() {
   const navigate = useNavigate()
   const [sizeChartOpen, setSizeChartOpen] = useState(false)
-
-  // Hidden Vault Interaction State
-  const [vaultModalOpen, setVaultModalOpen] = useState(false)
-  const [isFlickering, setIsFlickering] = useState(false)
-  const clickTimestampsRef = useRef([])
-  const longPressTimerRef = useRef(null)
-  const touchStartPosRef = useRef({ x: 0, y: 0 })
+  const vaultProps = getVaultTriggerProps()
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-
-  // Trigger the Vault Access discovery sequence
-  const activateVaultAccess = useCallback(() => {
-    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    // Visual flicker effect on the logo
-    setIsFlickering(true)
-
-    const flickerDuration = prefersReducedMotion ? 50 : 380
-    setTimeout(() => {
-      setIsFlickering(false)
-      setVaultModalOpen(true)
-    }, flickerDuration)
-  }, [])
-
-  // Desktop Interaction: 5 clicks within 3 seconds
-  const handleLogoClick = (e) => {
-    const now = Date.now()
-    // Retain only timestamps from within the last 3000ms
-    const recentClicks = clickTimestampsRef.current.filter((t) => now - t <= 3000)
-    recentClicks.push(now)
-    clickTimestampsRef.current = recentClicks
-
-    if (recentClicks.length >= 5) {
-      clickTimestampsRef.current = []
-      activateVaultAccess()
-    }
-  }
-
-  // Mobile Interaction: Long Press for 1.5 seconds
-  const handleTouchStart = (e) => {
-    if (e.touches.length !== 1) return
-    const touch = e.touches[0]
-    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY }
-
-    longPressTimerRef.current = setTimeout(() => {
-      activateVaultAccess()
-    }, 1500)
-  }
-
-  const handleTouchMove = (e) => {
-    if (!longPressTimerRef.current) return
-    const touch = e.touches[0]
-    const dx = Math.abs(touch.clientX - touchStartPosRef.current.x)
-    const dy = Math.abs(touch.clientY - touchStartPosRef.current.y)
-    // If movement exceeds 10px, assume regular scrolling and cancel long press
-    if (dx > 10 || dy > 10) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  const handleTouchEnd = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  const handleTouchCancel = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }
-
-  // Close modal on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setVaultModalOpen(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   return (
     <footer className="bg-[#090909] text-[#A6A6A6] pt-20 pb-8 mt-24 relative overflow-hidden border-t border-[#292929]">
@@ -343,27 +263,15 @@ export default function Footer() {
             id="aureva-footer-logo"
             role="button"
             tabIndex={0}
-            onClick={handleLogoClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchCancel}
-            className={`inline-flex items-center gap-2 select-none cursor-pointer px-4 py-2 transition-all duration-300 relative rounded-sm ${
-              isFlickering
-                ? 'opacity-80 scale-105 filter drop-shadow-[0_0_12px_rgba(184,255,0,0.6)] animate-pulse'
-                : 'hover:opacity-95'
-            }`}
+            {...vaultProps}
+            className="inline-flex items-center gap-2 select-none cursor-pointer px-4 py-2 transition-all duration-300 relative rounded-sm hover:opacity-90 active:scale-95"
             title="AUREVA Maison"
             aria-label="AUREVA Brand Seal"
           >
             <span className="font-display font-extrabold text-2xl tracking-[-0.04em] text-[#F5F5F5]">
               AUREVA
             </span>
-            <span
-              className={`w-1.5 h-1.5 rounded-full bg-[#B8FF00] inline-block transition-transform duration-300 ${
-                isFlickering ? 'scale-150 shadow-[0_0_12px_#B8FF00]' : 'shadow-[0_0_8px_#B8FF00]'
-              }`}
-            />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B8FF00] inline-block shadow-[0_0_8px_#B8FF00]" />
           </div>
           <p className="text-[10px] tracking-[0.28em] uppercase text-[#737373] font-mono mt-1">
             HAUTE COUTURE ARCHIVE • PARIS
@@ -380,81 +288,14 @@ export default function Footer() {
       {/* Monumental Oversized AUREVA Wordmark Watermark (also accepts clicks & long-press) */}
       <div
         id="aureva-footer-watermark"
-        onClick={handleLogoClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
         role="presentation"
-        className={`w-full select-none cursor-pointer overflow-hidden text-center mt-12 sm:mt-16 transition-opacity duration-500 -mb-4 sm:-mb-8 ${
-          isFlickering ? 'opacity-20 animate-pulse text-[#B8FF00]' : 'opacity-[0.04] hover:opacity-[0.07]'
-        }`}
+        {...vaultProps}
+        className="w-full select-none cursor-pointer overflow-hidden text-center mt-12 sm:mt-16 opacity-[0.04] hover:opacity-[0.08] transition-opacity duration-300 -mb-4 sm:-mb-8"
       >
         <span className="font-display font-extrabold text-[18vw] tracking-[0.2em] text-[#F5F5F5] leading-none inline-block whitespace-nowrap">
           AUREVA
         </span>
       </div>
-
-      {/* Elegant Hidden Vault Access Modal / Reveal Overlay */}
-      {vaultModalOpen && (
-        <div
-          id="vault-access-overlay"
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-fadeIn"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="vault-access-title"
-        >
-          <div className="relative w-full max-w-md bg-[#0D0D0D] border border-[#292929] p-8 shadow-2xl text-center space-y-6">
-            {/* Dismiss Button */}
-            <button
-              onClick={() => setVaultModalOpen(false)}
-              className="absolute top-4 right-4 text-[#737373] hover:text-[#F5F5F5] transition-colors p-1 cursor-pointer"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-
-            {/* Emblem */}
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#1A1A1A] border border-[#292929] text-[#B8FF00]">
-              <Shield size={22} />
-            </div>
-
-            {/* Subtle Elegant Transition Display */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-mono tracking-[0.35em] uppercase text-[#B8FF00] font-semibold block animate-pulse">
-                VAULT ACCESS
-              </span>
-              <h2 id="vault-access-title" className="font-display font-extrabold text-2xl text-[#F5F5F5] uppercase tracking-wide">
-                ENTER THE AUREVA VAULT
-              </h2>
-              <p className="text-xs text-[#A6A6A6] font-mono leading-relaxed">
-                Restricted administrative protocol initialized. Authorized personnel only.
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-2 flex flex-col gap-3">
-              <button
-                id="enter-vault-button"
-                onClick={() => {
-                  setVaultModalOpen(false)
-                  navigate('/vault')
-                }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-[#B8FF00] hover:bg-[#a6e600] text-[#090909] font-mono font-bold text-xs uppercase tracking-[0.2em] py-3.5 px-6 transition-colors shadow-lg cursor-pointer"
-              >
-                ENTER THE AUREVA VAULT →
-              </button>
-
-              <button
-                onClick={() => setVaultModalOpen(false)}
-                className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#737373] hover:text-[#A6A6A6] py-1 transition-colors cursor-pointer"
-              >
-                RETURN TO STOREFRONT
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Persistent Size Chart Modal */}
       <SizeChartModal isOpen={sizeChartOpen} onClose={() => setSizeChartOpen(false)} />
