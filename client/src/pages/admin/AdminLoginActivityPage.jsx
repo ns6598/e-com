@@ -109,29 +109,42 @@ export default function AdminLoginActivityPage() {
         onRetry={loadLogs}
         columns={[
           {
-            header: 'TARGET EMAIL / USER',
-            key: 'email',
+            header: 'USER',
+            key: 'user',
             render: (l) => (
-              <div>
-                <span className="font-mono text-xs text-[#F5F5F5] block font-semibold">
-                  {l.email}
-                </span>
-                {l.user && (
-                  <span className="text-[10px] text-[#A6A6A6]">
-                    Account: {l.user.name} ({l.user.role})
-                  </span>
-                )}
-              </div>
+              <span className="font-sans font-semibold text-xs text-[#F5F5F5] block">
+                {l.user?.name || l.email?.split('@')[0] || 'Atelier Patron'}
+              </span>
             ),
           },
           {
-            header: 'EVENT RESULT',
+            header: 'EMAIL',
+            key: 'email',
+            render: (l) => (
+              <span className="font-mono text-xs text-[#B8FF00] block">
+                {l.email}
+              </span>
+            ),
+          },
+          {
+            header: 'LOGIN TIME',
+            key: 'timestamp',
+            render: (l) => (
+              <span className="font-mono text-xs text-[#A6A6A6]">
+                {l.timestamp
+                  ? new Date(l.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })
+                  : 'Recent'}
+              </span>
+            ),
+          },
+          {
+            header: 'AUTH STATUS',
             key: 'success',
             render: (l) =>
               l.success ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] uppercase font-bold text-[#B8FF00] bg-[#131D08] border border-[#21350B]">
                   <CheckCircle2 size={12} />
-                  <span>SUCCESSFUL AUTH</span>
+                  <span>SUCCESSFUL</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] uppercase font-bold text-[#FF4D4D] bg-[#221010] border border-[#8B0000]">
@@ -141,31 +154,33 @@ export default function AdminLoginActivityPage() {
               ),
           },
           {
-            header: 'IP ADDRESS',
-            key: 'ipAddress',
+            header: 'ACCOUNT STATUS',
+            key: 'accountStatus',
             render: (l) => (
-              <span className="font-mono text-xs text-[#A6A6A6]">
-                {l.ipAddress || '127.0.0.1'}
+              <span className="inline-flex items-center px-2 py-0.5 text-[9px] uppercase font-bold border border-[#1F350C] text-[#B8FF00] bg-[#121E07]">
+                {l.accountStatus || 'ACTIVE'}
               </span>
             ),
           },
           {
-            header: 'CLIENT / USER AGENT',
-            key: 'userAgent',
-            render: (l) => (
-              <span className="font-mono text-[10px] text-[#737373] block truncate max-w-[260px]">
-                {l.userAgent || 'Browser Session'}
-              </span>
-            ),
-          },
-          {
-            header: 'TIMESTAMP',
-            key: 'timestamp',
+            header: 'LOGOUT TIME',
+            key: 'logoutTime',
             render: (l) => (
               <span className="font-mono text-xs text-[#737373]">
-                {l.timestamp
-                  ? new Date(l.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })
-                  : 'Recent'}
+                {l.logoutTime
+                  ? new Date(l.logoutTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                  : l.success
+                  ? 'Active / Session Cleared'
+                  : '—'}
+              </span>
+            ),
+          },
+          {
+            header: 'NETWORK / IP',
+            key: 'ipAddress',
+            render: (l) => (
+              <span className="font-mono text-[11px] text-[#737373]">
+                {l.ipAddress || '127.0.0.1'}
               </span>
             ),
           },

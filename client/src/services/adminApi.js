@@ -9,16 +9,19 @@ export const adminApi = {
   // 1. Executive Dashboard & Live Analytics
   getStats: async () => {
     try {
-      const res = await api.get('/admin/stats')
+      const res = await api.get('/admin/dashboard').catch(() => api.get('/admin/stats'))
       if (res && res.data) return res.data
     } catch (err) {
       console.warn('[adminApi] getStats note; using local computation:', err.message)
     }
     return {
       totalRevenue: 284500,
+      revenue: 284500,
       totalOrders: 18,
       activeProducts: 20,
+      totalProducts: 20,
       lowStockCount: 4,
+      lowStock: 4,
       totalCustomers: 5,
     }
   },
@@ -88,6 +91,73 @@ export const adminApi = {
       return res?.data || { id: variantId, stockQuantity }
     } catch {
       return { id: variantId, stockQuantity }
+    }
+  },
+
+  getInventory: async () => {
+    try {
+      const res = await api.get('/admin/inventory')
+      if (res && res.data && res.data.length > 0) return res.data
+    } catch (err) {
+      console.warn('[adminApi] getInventory fallback:', err.message)
+    }
+    // Fallback: build inventory rows from products
+    try {
+      const prods = await adminApi.getProducts()
+      const rows = []
+      prods.forEach((p) => {
+        if (p.variants && p.variants.length > 0) {
+          p.variants.forEach((v) => {
+            const stockVal = v.stockQuantity !== undefined ? v.stockQuantity : v.stock !== undefined ? v.stock : 10
+            rows.push({
+              id: v.id || `${p.id}-${v.sku || v.size}`,
+              productId: p.id,
+              product: p.name,
+              productName: p.name,
+              sku: v.sku || `AUR-${p.id.substring(0, 4)}-${v.size || 'STD'}`,
+              variant: `${v.size || 'Standard'} / ${v.color || 'Noir'}`,
+              size: v.size || 'Standard',
+              color: v.color || 'Noir',
+              availableStock: stockVal,
+              stock: stockVal,
+              isLowStock: stockVal <= 5,
+              lowStockIndicator: stockVal <= 5,
+              image: v.image || p.images?.[0] || p.image,
+              lastUpdated: p.updatedAt || new Date().toISOString(),
+            })
+          })
+        } else {
+          const stockVal = p.stock !== undefined ? p.stock : 12
+          rows.push({
+            id: p.id,
+            productId: p.id,
+            product: p.name,
+            productName: p.name,
+            sku: p.sku || `AUR-${p.id.substring(0, 6).toUpperCase()}`,
+            variant: 'Standard / Noir',
+            size: 'Standard / OS',
+            color: 'Noir Charcoal',
+            availableStock: stockVal,
+            stock: stockVal,
+            isLowStock: stockVal <= 5,
+            lowStockIndicator: stockVal <= 5,
+            image: p.images?.[0] || p.image,
+            lastUpdated: p.updatedAt || new Date().toISOString(),
+          })
+        }
+      })
+      return rows
+    } catch {
+      return []
+    }
+  },
+
+  updateInventory: async (id, stockQuantity) => {
+    try {
+      const res = await api.patch(`/admin/inventory/${encodeURIComponent(id)}`, { stockQuantity })
+      return res?.data || { id, stockQuantity }
+    } catch {
+      return adminApi.updateVariantStock(id, stockQuantity)
     }
   },
 
@@ -395,7 +465,7 @@ export const adminApi = {
   // 9. Concierge Messages
   getInquiries: async () => {
     try {
-      const res = await api.get('/admin/inquiries')
+      const res = await api.get('/admin/messages').catch(() => api.get('/admin/inquiries'))
       if (res && res.data) return res.data
     } catch (err) {
       console.warn('[adminApi] getInquiries fallback:', err.message)
@@ -422,13 +492,24 @@ export const adminApi = {
     ]
   },
 
+  getMessages: async () => {
+    return adminApi.getInquiries()
+  },
+
   updateInquiryStatus: async (id, status) => {
     try {
-      const res = await api.patch(`/admin/inquiries/${encodeURIComponent(id)}/status`, { status })
+      const res = await api
+        .patch(`/admin/messages/${encodeURIComponent(id)}`, { status })
+        .catch(() => api.patch(`/admin/inquiries/${encodeURIComponent(id)}/status`, { status }))
       return res?.data || null
     } catch {
       return { id, status }
     }
+  },
+
+  // 10. AUREVA Vault Authentication
+  vaultLogin: async (email, password) => {
+    return api.post('/auth/vault-login', { email, password })
   },
 }
 

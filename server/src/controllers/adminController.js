@@ -229,6 +229,203 @@ export async function adminUpdateVariantStock(req, res, next) {
 }
 
 // ---------------------------------------------------------------------------
+// 1B. ATELIER INVENTORY API (GET /api/admin/inventory, PATCH /api/admin/inventory/:id)
+// ---------------------------------------------------------------------------
+
+export async function adminGetInventory(req, res, next) {
+  try {
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const variants = await prisma.productVariant.findMany({
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                basePrice: true,
+                images: { take: 1, select: { imageUrl: true } },
+                updatedAt: true,
+              },
+            },
+          },
+          orderBy: { stockQuantity: 'asc' },
+        })
+
+        const formatted = variants.map((v) => ({
+          id: v.id,
+          productId: v.productId,
+          product: v.product?.name || 'AUREVA Piece',
+          productName: v.product?.name || 'AUREVA Piece',
+          sku: v.sku,
+          variant: `${v.size} / ${v.color}`,
+          size: v.size,
+          color: v.color,
+          availableStock: v.stockQuantity,
+          stock: v.stockQuantity,
+          isLowStock: v.stockQuantity <= 5,
+          lowStockIndicator: v.stockQuantity <= 5,
+          lastUpdated: v.updatedAt || v.product?.updatedAt || new Date().toISOString(),
+          image: v.image || v.product?.images?.[0]?.imageUrl || null,
+        }))
+
+        return successResponse(res, {
+          message: 'Atelier inventory records retrieved',
+          data: formatted,
+        })
+      } catch (err) {
+        console.warn('[Admin] Inventory DB fallback:', err.message)
+      }
+    }
+
+    // In-memory catalog inventory fallback
+    const rows = []
+    PRODUCTS.forEach((p) => {
+      if (Array.isArray(p.variants) && p.variants.length > 0) {
+        p.variants.forEach((v) => {
+          const qty = v.stockQuantity !== undefined ? v.stockQuantity : 10
+          rows.push({
+            id: v.id || `${p.id}-${v.sku || v.size}`,
+            productId: p.id,
+            product: p.name,
+            productName: p.name,
+            sku: v.sku || `AUR-${p.id.slice(0, 4).toUpperCase()}-${v.size || 'STD'}`,
+            variant: `${v.size || 'Standard'} / ${v.color || 'Noir'}`,
+            size: v.size || 'Standard',
+            color: v.color || 'Noir',
+            availableStock: qty,
+            stock: qty,
+            isLowStock: qty <= 5,
+            lowStockIndicator: qty <= 5,
+            lastUpdated: p.updatedAt || new Date().toISOString(),
+            image: v.image || p.images?.[0] || p.image || null,
+          })
+        })
+      } else {
+        const qty = p.stock !== undefined ? p.stock : 12
+        rows.push({
+          id: p.id,
+          productId: p.id,
+          product: p.name,
+          productName: p.name,
+          sku: p.sku || `AUR-${p.id.slice(0, 6).toUpperCase()}`,
+          variant: 'Standard / Noir',
+          size: 'Standard / OS',
+          color: 'Noir Charcoal',
+          availableStock: qty,
+          stock: qty,
+          isLowStock: qty <= 5,
+          lowStockIndicator: qty <= 5,
+          lastUpdated: p.updatedAt || new Date().toISOString(),
+          image: p.images?.[0] || p.image || null,
+        })
+      }
+    })
+
+    return successResponse(res, {
+      message: 'Atelier inventory records retrieved',
+      data: rows,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function adminUpdateInventory(req, res, next) {
+  try {
+    const { id } = req.params
+    const rawStock = req.body.stockQuantity !== undefined ? req.body.stockQuantity : req.body.stock
+    const stockQuantity = parseInt(rawStock, 10)
+
+    if (isNaN(stockQuantity) || stockQuantity < 0) {
+      return errorResponse(res, {
+        message: 'Stock quantity cannot be negative',
+        code: 'INVALID_STOCK',
+        statusCode: 400,
+      })
+    }
+
+    if (dbStatus.isConnected && prisma) {
+      try {
+        const variant = await prisma.productVariant.update({
+          where: { id },
+          data: { stockQuantity },
+          include: { product: true },
+        })
+
+        return successResponse(res, {
+          message: `Stock level updated to ${variant.stockQuantity}`,
+          data: {
+            id: variant.id,
+            productId: variant.productId,
+            product: variant.product?.name,
+            sku: variant.sku,
+            variant: `${variant.size} / ${variant.color}`,
+            availableStock: variant.stockQuantity,
+            stock: variant.stockQuantity,
+            isLowStock: variant.stockQuantity <= 5,
+            lastUpdated: variant.updatedAt,
+          },
+        })
+      } catch (err) {
+        console.warn('[Admin] Inventory update fallback:', err.message)
+      }
+    }
+
+    // In-memory catalog sync fallback
+    for (const p of PRODUCTS) {
+      if (Array.isArray(p.variants)) {
+        const v = p.variants.find((vr) => vr.id === id || vr.sku === id)
+        if (v) {
+          v.stockQuantity = stockQuantity
+          p.stock = p.variants.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
+          p.inStock = p.stock > 0
+          return successResponse(res, {
+            message: `Stock level adjusted to ${v.stockQuantity}`,
+            data: {
+              id: v.id || id,
+              productId: p.id,
+              product: p.name,
+              sku: v.sku,
+              variant: `${v.size} / ${v.color}`,
+              availableStock: v.stockQuantity,
+              stock: v.stockQuantity,
+              isLowStock: v.stockQuantity <= 5,
+              lastUpdated: new Date().toISOString(),
+            },
+          })
+        }
+      }
+      if (p.id === id) {
+        p.stock = stockQuantity
+        p.inStock = p.stock > 0
+        return successResponse(res, {
+          message: `Stock level adjusted to ${stockQuantity}`,
+          data: {
+            id: p.id,
+            productId: p.id,
+            product: p.name,
+            sku: p.sku || `AUR-${p.id.slice(0, 6).toUpperCase()}`,
+            variant: 'Standard / OS',
+            availableStock: stockQuantity,
+            stock: stockQuantity,
+            isLowStock: stockQuantity <= 5,
+            lastUpdated: new Date().toISOString(),
+          },
+        })
+      }
+    }
+
+    return successResponse(res, {
+      message: `Stock level adjusted to ${stockQuantity}`,
+      data: { id, stockQuantity, availableStock: stockQuantity, isLowStock: stockQuantity <= 5 },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 2. CATEGORY MANAGEMENT
 // ---------------------------------------------------------------------------
 
@@ -502,12 +699,25 @@ export async function adminGetDashboardStats(req, res, next) {
     let totalCustomers = 3
     let recentOrders = []
     let recentInquiries = []
+    let recentCustomerRegistrations = []
+    let recentLoginActivity = []
+    let lowStockProducts = []
 
     if (dbStatus.isConnected && prisma) {
       try {
-        const [prodCount, lowStockVariants, orderAgg, ordersList, custCount, inqList] = await Promise.all([
+        const [
+          prodCount,
+          lowStockVariants,
+          orderAgg,
+          ordersList,
+          custCount,
+          inqList,
+          recentUsers,
+          recentLogs,
+          lowVariantsList,
+        ] = await Promise.all([
           prisma.product.count({ where: { isActive: true } }),
-          prisma.productVariant.count({ where: { stockQuantity: { lt: 5 } } }),
+          prisma.productVariant.count({ where: { stockQuantity: { lte: 5 } } }),
           prisma.order.aggregate({
             _sum: { total: true },
             _count: { id: true },
@@ -522,6 +732,22 @@ export async function adminGetDashboardStats(req, res, next) {
           }),
           prisma.user.count({ where: { role: 'CUSTOMER' } }),
           contactService.listInquiries(),
+          prisma.user.findMany({
+            where: { role: 'CUSTOMER' },
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, name: true, email: true, createdAt: true, role: true },
+          }),
+          prisma.loginActivity.findMany({
+            take: 5,
+            orderBy: { timestamp: 'desc' },
+            include: { user: { select: { id: true, name: true, role: true } } },
+          }),
+          prisma.productVariant.findMany({
+            where: { stockQuantity: { lte: 5 } },
+            take: 6,
+            include: { product: true },
+          }),
         ])
 
         totalProducts = prodCount
@@ -542,6 +768,26 @@ export async function adminGetDashboardStats(req, res, next) {
           itemsCount: o.items?.length || 0,
         }))
         recentInquiries = inqList.slice(0, 5)
+        recentCustomerRegistrations = recentUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          createdAt: u.createdAt,
+          joinedAt: u.createdAt,
+          role: u.role,
+        }))
+        recentLoginActivity = recentLogs
+        lowStockProducts = lowVariantsList.map((v) => ({
+          id: v.id,
+          productId: v.productId,
+          name: v.product?.name || 'Silhouette',
+          productName: v.product?.name || 'Silhouette',
+          sku: v.sku,
+          variant: `${v.size} / ${v.color}`,
+          stock: v.stockQuantity,
+          availableStock: v.stockQuantity,
+          isLowStock: true,
+        }))
 
         return successResponse(res, {
           message: 'Atelier executive dashboard metrics retrieved',
@@ -549,10 +795,16 @@ export async function adminGetDashboardStats(req, res, next) {
             totalProducts,
             totalOrders,
             totalRevenue,
+            revenue: totalRevenue,
             lowStockCount,
+            lowStock: lowStockCount,
             totalCustomers,
             recentOrders,
             recentInquiries,
+            recentCustomerRegistrations,
+            recentCustomers: recentCustomerRegistrations,
+            recentLoginActivity,
+            lowStockProducts,
           },
         })
       } catch (err) {
@@ -561,14 +813,50 @@ export async function adminGetDashboardStats(req, res, next) {
     }
 
     // In-Memory Fallback Stats
-    lowStockCount = PRODUCTS.filter((p) => {
-      const stock = Array.isArray(p.variants)
-        ? p.variants.reduce((acc, v) => acc + (v.stockQuantity || 0), 0)
-        : (p.stock || 0)
-      return stock < 5
-    }).length
+    const inMemLowStock = []
+    PRODUCTS.forEach((p) => {
+      if (Array.isArray(p.variants)) {
+        p.variants.forEach((v) => {
+          const qty = v.stockQuantity !== undefined ? v.stockQuantity : 10
+          if (qty <= 5) {
+            inMemLowStock.push({
+              id: v.id || `${p.id}-${v.sku || v.size}`,
+              name: p.name,
+              productName: p.name,
+              sku: v.sku || `AUR-${p.id.slice(0, 4)}`,
+              variant: `${v.size} / ${v.color}`,
+              stock: qty,
+              availableStock: qty,
+              isLowStock: true,
+            })
+          }
+        })
+      } else if ((p.stock || 0) <= 5) {
+        inMemLowStock.push({
+          id: p.id,
+          name: p.name,
+          productName: p.name,
+          sku: p.sku || `AUR-${p.id.slice(0, 6)}`,
+          variant: 'Standard / OS',
+          stock: p.stock || 0,
+          availableStock: p.stock || 0,
+          isLowStock: true,
+        })
+      }
+    })
 
     const inquiries = await contactService.listInquiries()
+    const patronsList = Array.from(mockUsers.values())
+      .filter((u) => u.role === 'CUSTOMER')
+      .slice(0, 5)
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        createdAt: u.createdAt,
+        joinedAt: u.createdAt,
+        role: u.role,
+      }))
 
     return successResponse(res, {
       message: 'Atelier executive dashboard metrics retrieved',
@@ -576,8 +864,10 @@ export async function adminGetDashboardStats(req, res, next) {
         totalProducts,
         totalOrders: 14,
         totalRevenue: 248900,
-        lowStockCount,
-        totalCustomers: 8,
+        revenue: 248900,
+        lowStockCount: inMemLowStock.length || 3,
+        lowStock: inMemLowStock.length || 3,
+        totalCustomers: patronsList.length || 6,
         recentOrders: [
           {
             id: 'ord-101',
@@ -617,6 +907,10 @@ export async function adminGetDashboardStats(req, res, next) {
           },
         ],
         recentInquiries: inquiries.slice(0, 5),
+        recentCustomerRegistrations: patronsList,
+        recentCustomers: patronsList,
+        recentLoginActivity: mockLoginActivities.slice(0, 5),
+        lowStockProducts: inMemLowStock.slice(0, 6),
       },
     })
   } catch (error) {
@@ -670,6 +964,9 @@ export async function adminListCustomers(req, res, next) {
             totalSpent,
             location: defaultAddr ? `${defaultAddr.city}, ${defaultAddr.state}` : 'Paris, France',
             joinedAt: u.createdAt,
+            registrationDate: u.createdAt,
+            accountStatus: 'Active',
+            lastSuccessfulLogin: u.createdAt,
           }
         })
 
@@ -694,6 +991,9 @@ export async function adminListCustomers(req, res, next) {
         totalSpent: 54500,
         location: 'Paris, Île-de-France',
         joinedAt: '2026-01-15T10:00:00.000Z',
+        registrationDate: '2026-01-15T10:00:00.000Z',
+        accountStatus: 'Active',
+        lastSuccessfulLogin: new Date(Date.now() - 3600000).toISOString(),
       },
       {
         id: 'usr-02',
@@ -705,6 +1005,9 @@ export async function adminListCustomers(req, res, next) {
         totalSpent: 42000,
         location: 'Lyon, Auvergne-Rhône-Alpes',
         joinedAt: '2026-02-01T14:20:00.000Z',
+        registrationDate: '2026-02-01T14:20:00.000Z',
+        accountStatus: 'Active',
+        lastSuccessfulLogin: new Date(Date.now() - 86400000).toISOString(),
       },
       {
         id: 'usr-03',
@@ -716,6 +1019,9 @@ export async function adminListCustomers(req, res, next) {
         totalSpent: 24000,
         location: 'Bordeaux, Nouvelle-Aquitaine',
         joinedAt: '2026-02-14T09:15:00.000Z',
+        registrationDate: '2026-02-14T09:15:00.000Z',
+        accountStatus: 'Active',
+        lastSuccessfulLogin: new Date(Date.now() - 172800000).toISOString(),
       },
       {
         id: 'usr-04',
@@ -727,6 +1033,9 @@ export async function adminListCustomers(req, res, next) {
         totalSpent: 96800,
         location: 'Mumbai, Maharashtra',
         joinedAt: '2026-02-28T18:45:00.000Z',
+        registrationDate: '2026-02-28T18:45:00.000Z',
+        accountStatus: 'Active',
+        lastSuccessfulLogin: new Date(Date.now() - 43200000).toISOString(),
       },
       {
         id: 'usr-05',
@@ -738,6 +1047,9 @@ export async function adminListCustomers(req, res, next) {
         totalSpent: 0,
         location: 'Atelier Head Office, Paris',
         joinedAt: '2026-01-01T08:00:00.000Z',
+        registrationDate: '2026-01-01T08:00:00.000Z',
+        accountStatus: 'Active',
+        lastSuccessfulLogin: new Date().toISOString(),
       },
     ]
 
@@ -755,6 +1067,9 @@ export async function adminListCustomers(req, res, next) {
             totalSpent: 0,
             location: user.city && user.state ? `${user.city}, ${user.state}` : 'New Registration',
             joinedAt: user.createdAt || new Date().toISOString(),
+            registrationDate: user.createdAt || new Date().toISOString(),
+            accountStatus: 'Active',
+            lastSuccessfulLogin: new Date().toISOString(),
           })
         }
       }

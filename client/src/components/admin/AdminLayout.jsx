@@ -4,8 +4,19 @@ import AdminSidebar from './AdminSidebar'
 import AdminHeader from './AdminHeader'
 
 const TITLE_MAP = {
-  '/admin': 'EXECUTIVE DASHBOARD',
-  '/admin/dashboard': 'EXECUTIVE DASHBOARD',
+  '/vault': 'VAULT EXECUTIVE DASHBOARD',
+  '/vault/dashboard': 'VAULT EXECUTIVE DASHBOARD',
+  '/vault/products': 'CATALOG & PRODUCT ARCHIVE',
+  '/vault/categories': 'DEPARTMENT & TAXONOMY',
+  '/vault/inventory': 'STOCK & VARIANT INVENTORY',
+  '/vault/orders': 'SALES & DISPATCH DISPATCHES',
+  '/vault/customers': 'PATRON & CLIENT DIRECTORY',
+  '/vault/login-activity': 'SECURITY & AUTHENTICATION AUDIT',
+  '/vault/coupons': 'PROMOTIONS & PRIVILEGE CODES',
+  '/vault/messages': 'CLIENTELE CONCIERGE INQUIRIES',
+  '/vault/settings': 'CONSOLE CONFIGURATION',
+  '/admin': 'VAULT EXECUTIVE DASHBOARD',
+  '/admin/dashboard': 'VAULT EXECUTIVE DASHBOARD',
   '/admin/products': 'CATALOG & PRODUCT ARCHIVE',
   '/admin/categories': 'DEPARTMENT & TAXONOMY',
   '/admin/inventory': 'STOCK & VARIANT INVENTORY',
@@ -21,7 +32,7 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
 
-  const currentTitle = TITLE_MAP[location.pathname] || 'ADMIN CONSOLE'
+  const currentTitle = TITLE_MAP[location.pathname] || 'AUREVA VAULT'
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F5F5F5] antialiased selection:bg-[#B8FF00] selection:text-[#090909]">

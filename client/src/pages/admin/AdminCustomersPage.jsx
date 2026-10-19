@@ -105,54 +105,56 @@ export default function AdminCustomersPage() {
         onRetry={loadCustomers}
         columns={[
           {
-            header: 'PATRON ID',
-            key: 'id',
-            render: (c) => (
-              <span className="font-mono text-xs text-[#B8FF00]">
-                {c.id?.length > 14 ? `${c.id.substring(0, 8)}...` : c.id}
-              </span>
-            ),
-          },
-          {
-            header: 'CLIENT NAME & EMAIL',
+            header: 'CUSTOMER NAME',
             key: 'name',
             render: (c) => (
-              <div>
-                <span className="font-sans font-semibold text-xs text-[#F5F5F5] block">
-                  {c.name}
-                </span>
-                <span className="text-[10px] text-[#737373] font-mono block">
-                  {c.email}
-                </span>
-              </div>
-            ),
-          },
-          {
-            header: 'ROLE / TIER',
-            key: 'role',
-            render: (c) => (
-              <span
-                className={`px-2 py-0.5 text-[9px] uppercase font-bold border ${
-                  c.role === 'ADMIN'
-                    ? 'border-[#B8FF00] text-[#B8FF00] bg-[#172207]'
-                    : 'border-[#262626] text-[#A6A6A6] bg-[#161616]'
-                }`}
-              >
-                {c.role || 'CUSTOMER'}
+              <span className="font-sans font-semibold text-xs text-[#F5F5F5] block">
+                {c.name}
               </span>
             ),
           },
           {
-            header: 'CONTACT PHONE',
-            key: 'phone',
+            header: 'EMAIL',
+            key: 'email',
             render: (c) => (
-              <span className="text-[#A6A6A6] text-xs font-mono">
-                {c.phone || '—'}
+              <span className="font-mono text-xs text-[#B8FF00] block">
+                {c.email}
               </span>
             ),
           },
           {
-            header: 'BOOKINGS',
+            header: 'REGISTRATION DATE',
+            key: 'joinedAt',
+            render: (c) => (
+              <span className="font-mono text-xs text-[#A6A6A6]">
+                {c.joinedAt || c.registrationDate || c.createdAt
+                  ? new Date(c.joinedAt || c.registrationDate || c.createdAt).toLocaleDateString()
+                  : 'Recent'}
+              </span>
+            ),
+          },
+          {
+            header: 'ACCOUNT STATUS',
+            key: 'accountStatus',
+            render: (c) => (
+              <span className="inline-flex items-center px-2 py-0.5 text-[9px] uppercase font-bold border border-[#1F350C] text-[#B8FF00] bg-[#121E07]">
+                {c.accountStatus || 'ACTIVE'}
+              </span>
+            ),
+          },
+          {
+            header: 'LAST SUCCESSFUL LOGIN',
+            key: 'lastSuccessfulLogin',
+            render: (c) => (
+              <span className="font-mono text-xs text-[#737373]">
+                {c.lastSuccessfulLogin
+                  ? new Date(c.lastSuccessfulLogin).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                  : 'Active session'}
+              </span>
+            ),
+          },
+          {
+            header: 'ORDER COUNT',
             key: 'orderCount',
             render: (c) => (
               <div>
@@ -160,22 +162,11 @@ export default function AdminCustomersPage() {
                   {c.orderCount !== undefined ? c.orderCount : c.orders?.length || 0} orders
                 </span>
                 {c.totalSpent > 0 && (
-                  <span className="text-[10px] text-[#B8FF00]">
-                    {formatCurrency(c.totalSpent)}
+                  <span className="text-[10px] text-[#A6A6A6]">
+                    Spent: {formatCurrency(c.totalSpent)}
                   </span>
                 )}
               </div>
-            ),
-          },
-          {
-            header: 'JOINED DATE',
-            key: 'joinedAt',
-            render: (c) => (
-              <span className="text-[#737373] text-[10px]">
-                {c.joinedAt || c.createdAt
-                  ? new Date(c.joinedAt || c.createdAt).toLocaleDateString()
-                  : 'Recent'}
-              </span>
             ),
           },
           {
@@ -187,7 +178,7 @@ export default function AdminCustomersPage() {
                 type="button"
                 onClick={() => handleViewCustomer(c)}
                 className="p-1.5 border border-[#262626] hover:border-[#B8FF00] hover:text-[#B8FF00] text-[#A6A6A6] transition-colors cursor-pointer"
-                title="View Patron Dossier"
+                title="View Customer Dossier"
               >
                 <Eye size={13} />
               </button>

@@ -16,39 +16,8 @@ export default function AdminInventoryPage() {
     setLoading(true)
     setError(null)
     try {
-      const products = await adminApi.getProducts()
-      // Flatten into inventory rows (variants or product lines)
-      const rows = []
-      products.forEach((p) => {
-        if (p.variants && p.variants.length > 0) {
-          p.variants.forEach((v) => {
-            rows.push({
-              id: v.id || `${p.id}-${v.sku}`,
-              productId: p.id,
-              productName: p.name,
-              sku: v.sku || `AUR-${p.id.substring(0, 4)}-${v.size || 'STD'}`,
-              size: v.size || 'Standard',
-              color: v.color || 'Noir',
-              stock: v.stockQuantity !== undefined ? v.stockQuantity : v.stock !== undefined ? v.stock : 10,
-              image: v.image || p.images?.[0] || p.image,
-              updatedAt: p.updatedAt || new Date().toISOString(),
-            })
-          })
-        } else {
-          rows.push({
-            id: p.id,
-            productId: p.id,
-            productName: p.name,
-            sku: p.sku || `AUR-${p.id.substring(0, 6).toUpperCase()}`,
-            size: 'Standard / OS',
-            color: 'Noir Charcoal',
-            stock: p.stock !== undefined ? p.stock : 12,
-            image: p.images?.[0] || p.image,
-            updatedAt: p.updatedAt || new Date().toISOString(),
-          })
-        }
-      })
-      setItems(rows)
+      const data = await adminApi.getInventory()
+      setItems(data || [])
     } catch (err) {
       setError(err.message || 'Failed to retrieve inventory data.')
     } finally {
@@ -71,11 +40,19 @@ export default function AdminInventoryPage() {
 
     setSavingId(row.id)
     try {
-      await adminApi.updateVariantStock(row.id, newStock)
+      await adminApi.updateInventory(row.id, newStock)
       setItems((prev) =>
         prev.map((item) =>
           item.id === row.id
-            ? { ...item, stock: newStock, updatedAt: new Date().toISOString() }
+            ? {
+                ...item,
+                stock: newStock,
+                availableStock: newStock,
+                isLowStock: newStock <= 5,
+                lowStockIndicator: newStock <= 5,
+                lastUpdated: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
             : item
         )
       )
@@ -86,7 +63,7 @@ export default function AdminInventoryPage() {
       })
       setFeedback({
         type: 'success',
-        text: `Inventory for SKU ${row.sku} updated to ${newStock} units.`,
+        text: `Inventory for SKU ${row.sku} updated to ${newStock} units. Synchronized across storefront.`,
       })
     } catch (err) {
       setFeedback({ type: 'error', text: err.message || 'Failed to adjust stock.' })
@@ -160,30 +137,27 @@ export default function AdminInventoryPage() {
         onRetry={loadInventory}
         columns={[
           {
-            header: 'PRODUCT / PIECE',
+            header: 'PRODUCT',
             key: 'productName',
             render: (r) => (
               <div className="flex items-center gap-3">
                 {r.image && (
                   <img
                     src={r.image}
-                    alt={r.productName}
+                    alt={r.productName || r.product}
                     className="w-9 h-11 object-cover bg-[#171717] shrink-0 border border-[#222222]"
                   />
                 )}
                 <div>
                   <span className="font-semibold text-xs text-[#F5F5F5] font-sans block truncate max-w-[220px]">
-                    {r.productName}
-                  </span>
-                  <span className="text-[10px] text-[#737373] font-mono">
-                    {r.color} • {r.size}
+                    {r.productName || r.product}
                   </span>
                 </div>
               </div>
             ),
           },
           {
-            header: 'SKU IDENTIFIER',
+            header: 'SKU',
             key: 'sku',
             render: (r) => (
               <span className="font-mono text-xs text-[#B8FF00] font-bold">
@@ -192,12 +166,29 @@ export default function AdminInventoryPage() {
             ),
           },
           {
-            header: 'STOCK LEVEL & ADJUSTMENT',
-            key: 'stock',
+            header: 'VARIANT',
+            key: 'variant',
+            render: (r) => (
+              <span className="font-mono text-xs text-[#A6A6A6]">
+                {r.variant || `${r.size || 'OS'} / ${r.color || 'Noir'}`}
+              </span>
+            ),
+          },
+          {
+            header: 'AVAILABLE STOCK',
+            key: 'availableStock',
             render: (r) => {
-              const currentStock = stockEdits[r.id] !== undefined ? stockEdits[r.id] : r.stock
-              const hasChanged = stockEdits[r.id] !== undefined && stockEdits[r.id] !== r.stock
-              const isLow = currentStock <= 5
+              const currentStock =
+                stockEdits[r.id] !== undefined
+                  ? stockEdits[r.id]
+                  : r.availableStock !== undefined
+                  ? r.availableStock
+                  : r.stock !== undefined
+                  ? r.stock
+                  : 0
+              const originalStock =
+                r.availableStock !== undefined ? r.availableStock : r.stock !== undefined ? r.stock : 0
+              const hasChanged = stockEdits[r.id] !== undefined && stockEdits[r.id] !== originalStock
 
               return (
                 <div className="flex items-center gap-2">
@@ -219,41 +210,45 @@ export default function AdminInventoryPage() {
                       <span>{savingId === r.id ? '...' : 'SAVE'}</span>
                     </button>
                   )}
-                  {isLow && (
-                    <span className="px-1.5 py-0.5 text-[9px] font-bold text-[#FF4D4D] bg-[#221010] border border-[#8B0000]">
-                      LOW
-                    </span>
-                  )}
                 </div>
               )
             },
           },
           {
-            header: 'STATUS',
-            key: 'status',
+            header: 'LOW-STOCK INDICATOR',
+            key: 'isLowStock',
             render: (r) => {
-              const stock = stockEdits[r.id] !== undefined ? stockEdits[r.id] : r.stock
-              return (
-                <span
-                  className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${
-                    stock === 0
-                      ? 'border-[#8B0000] text-[#FF4D4D] bg-[#221010]'
-                      : stock <= 5
-                      ? 'border-[#8B0000]/60 text-[#FF8585] bg-[#1F1212]'
-                      : 'border-[#1F2E12] text-[#B8FF00] bg-[#121B0A]'
-                  }`}
-                >
-                  {stock === 0 ? 'DEPLETED' : stock <= 5 ? 'LOW INVENTORY' : 'ACTIVE STOCK'}
+              const stock =
+                stockEdits[r.id] !== undefined
+                  ? stockEdits[r.id]
+                  : r.availableStock !== undefined
+                  ? r.availableStock
+                  : r.stock !== undefined
+                  ? r.stock
+                  : 0
+              const isLow = stock <= 5
+              return isLow ? (
+                <span className="inline-flex items-center px-2 py-0.5 text-[9px] font-bold text-[#FF4D4D] bg-[#221010] border border-[#8B0000]">
+                  LOW STOCK ({stock})
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 text-[9px] font-bold text-[#B8FF00] bg-[#121E07] border border-[#1F350C]">
+                  IN STOCK ({stock})
                 </span>
               )
             },
           },
           {
             header: 'LAST UPDATED',
-            key: 'updatedAt',
+            key: 'lastUpdated',
             render: (r) => (
-              <span className="text-[#737373] text-[10px]">
-                {r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : 'Recent'}
+              <span className="font-mono text-xs text-[#737373]">
+                {r.lastUpdated || r.updatedAt
+                  ? new Date(r.lastUpdated || r.updatedAt).toLocaleString([], {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })
+                  : 'Recent'}
               </span>
             ),
           },

@@ -117,3 +117,6 @@ export async function requireAdmin(req, res, next) {
 
   next()
 }
+
+// Security aliases matching administrative architecture specifications
+export const authenticateUser = requireAuth

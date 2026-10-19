@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import authService from '../services/authService'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -114,34 +115,47 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const adminLogin = async (identifier, password) => {
+  const vaultLogin = async (identifier, password) => {
+    const cleanId = (identifier || '').trim().toLowerCase()
     try {
-      const cleanId = (identifier || '').trim().toLowerCase()
-      // First try live backend API
-      const data = await authService.login(cleanId, password)
-      if (data && data.user) {
-        if (data.user.role !== 'ADMIN') {
-          return {
-            success: false,
-            message: 'Access denied: elevated administrator credentials required.',
-          }
+      // Live backend Vault login endpoint
+      const response = await api.post('/auth/vault-login', { email: cleanId, password })
+      if (response && response.success && response.data) {
+        const { user: authedUser, token: authToken } = response.data
+        setUser(authedUser)
+        if (authToken) {
+          setToken(authToken)
+          localStorage.setItem('aureva_auth_token', authToken)
         }
-        setUser(data.user)
-        if (data.token) {
-          setToken(data.token)
-          localStorage.setItem('aureva_auth_token', data.token)
-        }
-        localStorage.setItem('aureva_user', JSON.stringify(data.user))
-        return { success: true, user: data.user }
+        localStorage.setItem('aureva_user', JSON.stringify(authedUser))
+        return { success: true, user: authedUser }
       }
-      return { success: false, message: 'Invalid administrator credentials' }
+      return { success: false, status: 401, message: 'Invalid credentials provided' }
     } catch (err) {
-      // Offline fallback: check recognized admin credentials for static/demo environment
-      const cleanId = (identifier || '').trim().toLowerCase()
-      const isAdminUser = cleanId === 'admin' || cleanId === 'admin@aureva.com' || cleanId === 'curator@aureva-studios.demo'
-      const isValidPass = password === 'Admin@123' || password === 'AurevaAdmin2026!'
+      if (err.status === 403 || err.message?.includes('Vault access is restricted')) {
+        return {
+          success: false,
+          status: 403,
+          message: 'Vault access is restricted.',
+        }
+      }
 
-      if (isAdminUser && isValidPass) {
+      // Offline fallback: check recognized admin credentials
+      const isAdminUser = cleanId === 'admin' || cleanId === 'admin@aureva.com' || cleanId === 'curator@aureva-studios.demo'
+      const isValidAdminPass = password === 'Admin@123' || password === 'AurevaAdmin2026!'
+
+      // If recognized customer trying to access vault
+      const isCustomerUser = cleanId === 'patron@aureva-studios.demo' || cleanId === 'patron'
+      const isValidCustomerPass = password === 'AurevaSalon2026!'
+      if (isCustomerUser && isValidCustomerPass) {
+        return {
+          success: false,
+          status: 403,
+          message: 'Vault access is restricted.',
+        }
+      }
+
+      if (isAdminUser && isValidAdminPass) {
         const adminUser = {
           id: 'usr-admin-system',
           email: cleanId === 'curator@aureva-studios.demo' ? 'curator@aureva-studios.demo' : 'admin@aureva.com',
@@ -158,10 +172,13 @@ export function AuthProvider({ children }) {
 
       return {
         success: false,
-        message: err.message || 'Invalid administrative credentials.',
+        status: err.status || 401,
+        message: err.message || 'Invalid credentials provided',
       }
     }
   }
+
+  const adminLogin = vaultLogin
 
   const adminLogout = async () => {
     await logout()
@@ -176,6 +193,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    vaultLogin,
     adminLogin,
     adminLogout,
     updateProfile,

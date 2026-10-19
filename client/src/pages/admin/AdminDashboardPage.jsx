@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
               <span>RECENT CUSTOMER ORDERS</span>
             </h3>
             <Link
-              to="/admin/orders"
+              to="/vault/orders"
               className="text-xs font-mono uppercase tracking-wider text-[#B8FF00] hover:underline flex items-center gap-1"
             >
               <span>VIEW ALL</span>
@@ -190,7 +190,7 @@ export default function AdminDashboardPage() {
               <span>NEW PATRON REGISTRATIONS</span>
             </h3>
             <Link
-              to="/admin/customers"
+              to="/vault/customers"
               className="text-xs font-mono uppercase tracking-wider text-[#B8FF00] hover:underline flex items-center gap-1"
             >
               <span>DIRECTORY</span>
@@ -252,7 +252,7 @@ export default function AdminDashboardPage() {
               <span>LOW STOCK INVENTORY WATCH</span>
             </h3>
             <Link
-              to="/admin/inventory"
+              to="/vault/inventory"
               className="text-xs font-mono uppercase tracking-wider text-[#B8FF00] hover:underline flex items-center gap-1"
             >
               <span>MANAGE STOCK</span>
@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
               <span>RECENT LOGIN ACTIVITY AUDIT</span>
             </h3>
             <Link
-              to="/admin/login-activity"
+              to="/vault/login-activity"
               className="text-xs font-mono uppercase tracking-wider text-[#B8FF00] hover:underline flex items-center gap-1"
             >
               <span>VIEW FULL LOG</span>

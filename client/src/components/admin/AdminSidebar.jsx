@@ -12,22 +12,22 @@ import {
   Mail,
   Settings,
   LogOut,
-  Shield,
+  KeyRound,
   ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Products', path: '/admin/products', icon: Package },
-  { label: 'Categories', path: '/admin/categories', icon: Layers },
-  { label: 'Inventory', path: '/admin/inventory', icon: Boxes },
-  { label: 'Orders', path: '/admin/orders', icon: ShoppingBag },
-  { label: 'Customers', path: '/admin/customers', icon: Users },
-  { label: 'Login Activity', path: '/admin/login-activity', icon: ShieldCheck },
-  { label: 'Coupons', path: '/admin/coupons', icon: Tag },
-  { label: 'Messages', path: '/admin/messages', icon: Mail },
-  { label: 'Settings', path: '/admin/settings', icon: Settings },
+  { label: 'Dashboard', path: '/vault/dashboard', icon: LayoutDashboard },
+  { label: 'Products', path: '/vault/products', icon: Package },
+  { label: 'Categories', path: '/vault/categories', icon: Layers },
+  { label: 'Inventory', path: '/vault/inventory', icon: Boxes },
+  { label: 'Orders', path: '/vault/orders', icon: ShoppingBag },
+  { label: 'Customers', path: '/vault/customers', icon: Users },
+  { label: 'Login Activity', path: '/vault/login-activity', icon: ShieldCheck },
+  { label: 'Coupons', path: '/vault/coupons', icon: Tag },
+  { label: 'Messages', path: '/vault/messages', icon: Mail },
+  { label: 'Settings', path: '/vault/settings', icon: Settings },
 ]
 
 export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
@@ -36,7 +36,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
 
   const handleLogout = async () => {
     await adminLogout()
-    navigate('/admin/login', { replace: true })
+    navigate('/vault/login', { replace: true })
   }
 
   return (
@@ -60,14 +60,14 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
           <div className="h-18 px-6 border-b border-[#222222] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-[#1A1A1A] border border-[#B8FF00] flex items-center justify-center text-[#B8FF00] font-bold">
-                <Shield size={16} />
+                <KeyRound size={16} />
               </div>
               <div>
                 <span className="font-['Syne'] font-extrabold text-base tracking-[0.2em] text-[#F5F5F5] block leading-none">
                   AUREVA
                 </span>
-                <span className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#B8FF00] mt-1 block">
-                  ADMIN PANEL
+                <span className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#B8FF00] mt-1 block font-bold">
+                  THE VAULT
                 </span>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
             rel="noopener noreferrer"
             className="flex items-center justify-between px-3 py-2 text-[10px] uppercase font-mono tracking-wider text-[#737373] hover:text-[#B8FF00] bg-[#121212] border border-[#222222] transition-colors"
           >
-            <span>LIVE BOUTIQUE</span>
+            <span>LIVE STOREFRONT</span>
             <ExternalLink size={12} />
           </a>
 
@@ -117,9 +117,14 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
               {(user?.name || 'A')[0]}
             </div>
             <div className="min-w-0 flex-1">
-              <span className="text-xs font-semibold text-[#F5F5F5] truncate block">
-                {user?.name || 'Admin Curator'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-[#F5F5F5] truncate block">
+                  {user?.name || 'Admin Curator'}
+                </span>
+                <span className="text-[8px] px-1 py-0.2 bg-[#1A2608] border border-[#B8FF00]/60 text-[#B8FF00] font-mono uppercase font-bold">
+                  ADMIN
+                </span>
+              </div>
               <span className="text-[10px] font-mono text-[#A6A6A6] truncate block">
                 {user?.email || 'admin@aureva.com'}
               </span>
@@ -133,7 +138,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
             className="w-full flex items-center justify-center gap-2 py-2.5 text-xs uppercase font-mono tracking-wider text-[#FF4D4D] hover:bg-[#1C1111] border border-transparent hover:border-[#8B0000]/60 transition-colors cursor-pointer"
           >
             <LogOut size={14} />
-            <span>DISCONNECT ADMIN</span>
+            <span>EXIT VAULT</span>
           </button>
         </div>
       </aside>
